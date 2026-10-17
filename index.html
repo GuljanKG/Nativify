@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Nativify</title>
+<meta name="description" content="Sound like you grew up speaking English.">
+<meta name="theme-color" content="#0d5c4f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Nativify">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: phone-first app shell. Header on top, one scrolling screen, a fixed tab bar at the bottom. Native rewrites read like marked-up writing, swaps in highlighter yellow. */
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --ink:#15211e; --muted:#5b6b66; --line:#d9e0dd;
+  --accent:#0d5c4f; --accent-ink:#ffffff; --accent-soft:#e1efeb;
+  --hl:#ffe46b; --hl-ink:#15211e; --strike:#9a4a3c; --good:#2a7a43; --warn:#9a6a12;
+  --bar:rgba(255,255,255,.94);
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0f1715; --surface:#17221f; --ink:#e4ece9; --muted:#97a8a2; --line:#2a3834;
+  --accent:#5fc7b1; --accent-ink:#0b1513; --accent-soft:#1b302b;
+  --hl:#6b5a12; --hl-ink:#fff6cc; --strike:#e39a8b; --good:#7fd19a; --warn:#e2b55f;
+  --bar:rgba(23,34,31,.94); color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:17px/1.55 var(--body);-webkit-text-size-adjust:100%;
+  padding-top:env(safe-area-inset-top,0px)}
+[hidden]{display:none!important}
+.wrap{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:20px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:20px calc(96px + env(safe-area-inset-bottom,0px))}
+header.top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.logo{font:700 30px/1 var(--display);margin:0;letter-spacing:-.01em}
+.logo span{background:linear-gradient(transparent 58%,var(--hl) 58%);padding:0 2px}
+.iconbtn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;width:40px;height:40px;display:grid;place-items:center;cursor:pointer}
+.iconbtn svg{width:20px;height:20px}
+h2{font:700 24px/1.2 var(--display);margin:0;text-wrap:balance}
+h3{font:700 17px/1.3 var(--body);margin:0}
+p{margin:0}
+.label{font:500 11.5px/1.2 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+section.screen{display:flex;flex-direction:column;gap:16px}
+.intro{color:var(--muted);font-size:15.5px;max-width:60ch}
+.field{display:flex;flex-direction:column;gap:6px}
+textarea,input[type=text],input[type=password]{font:inherit;font-size:17px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;width:100%}
+textarea{min-height:120px;resize:vertical}
+textarea:focus,input:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{font:500 14.5px var(--body);border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 13px;border-radius:999px;cursor:pointer}
+.chips button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);font-weight:700}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{font:700 16px var(--body);border:0;border-radius:12px;padding:13px 18px;cursor:pointer;background:var(--accent);color:var(--accent-ink)}
+.btn.wide{width:100%}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--line)}
+.btn.small{font-size:14.5px;padding:8px 13px;border-radius:10px}
+.btn:disabled{opacity:.55;cursor:default}
+.status{color:var(--muted);font-size:15px;min-height:1.2em}
+.status.err{color:var(--strike)}
+.thinking::after{content:"";display:inline-block;width:1.2em;text-align:left;animation:dots 1.2s steps(4) infinite}
+@keyframes dots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
+.result{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.flag{align-self:flex-start;font:500 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:5px 8px;border-radius:5px;background:var(--accent-soft);color:var(--accent)}
+.native{font-size:19px;line-height:1.65;overflow-wrap:anywhere}
+mark{background:var(--hl);color:var(--hl-ink);padding:0 3px;border-radius:3px}
+.items{display:flex;flex-direction:column;list-style:none;padding:0;margin:0}
+.items > li{display:flex;flex-direction:column;gap:6px;padding-block:14px;border-top:1px solid var(--line)}
+.swap-line{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline}
+.was{color:var(--strike);text-decoration:line-through;text-decoration-thickness:1px}
+.arrow{color:var(--muted)}
+.now{font-weight:700}
+.why{color:var(--muted);font-size:15.5px}
+.reg{font:500 11px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:4px 7px;border-radius:4px;border:1px solid var(--line);color:var(--muted)}
+.phrase{font:700 20px/1.3 var(--display)}
+.ex{font-style:italic;color:var(--muted);font-size:15.5px}
+.useit{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;background:var(--accent-soft)}
+.useit textarea{min-height:68px}
+.fb{font-size:15.5px}
+.fb.ok{color:var(--good)} .fb.close{color:var(--warn)}
+.saved{color:var(--good);font-weight:700;font-size:14.5px}
+.deck-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:baseline}
+.count{font:500 13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 18px;display:flex;flex-direction:column;gap:14px}
+.card .prompt{font-size:20px;line-height:1.45}
+.answer{border-top:1px dashed var(--line);padding-top:14px;display:flex;flex-direction:column;gap:8px}
+.empty{color:var(--muted);background:var(--surface);border:1px dashed var(--line);border-radius:16px;padding:20px 18px}
+.list{display:flex;flex-direction:column;list-style:none;padding:0;margin:0}
+.list li{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding-block:12px;border-top:1px solid var(--line)}
+.list li > div{min-width:0}
+.list .m{color:var(--muted);font-size:15px}
+.list .due{font:500 12px var(--mono);color:var(--muted);white-space:nowrap;padding-top:4px}
+.link{background:none;border:0;color:var(--muted);font:inherit;font-size:13.5px;cursor:pointer;text-decoration:underline;padding:0;justify-self:start}
+.banner{display:flex;flex-direction:column;gap:10px;background:var(--accent-soft);border-radius:14px;padding:14px 16px}
+.banner p{font-size:15.5px}
+.steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:15.5px}
+.note{color:var(--muted);font-size:14px}
+code{font:14px var(--mono);background:var(--accent-soft);padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
+a{color:var(--accent)}
+nav.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--bar);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--line);
+  padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
+nav.tabbar .in{max-width:680px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+nav.tabbar button{border:0;background:transparent;color:var(--muted);font:600 12.5px/1.2 var(--body);display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 4px;border-radius:10px;cursor:pointer;position:relative}
+nav.tabbar svg{width:24px;height:24px}
+nav.tabbar button[aria-selected="true"]{color:var(--accent)}
+nav.tabbar button[aria-selected="true"] svg{stroke-width:2.2}
+.badge{position:absolute;top:2px;left:calc(50% + 8px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--hl);color:var(--hl-ink);font:700 11px/18px var(--body);text-align:center}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1 class="logo">Nati<span>vify</span></h1>
+    <button class="iconbtn" id="open-settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+  </header>
+
+  <div class="banner" id="key-banner" hidden>
+    <p><b>You're looking at examples.</b> Add your Anthropic API key in Settings to rewrite and decode your own sentences.</p>
+    <div class="row"><button class="btn small" id="banner-settings">Open Settings</button></div>
+  </div>
+
+  <!-- SAY IT LIKE A LOCAL -->
+  <section class="screen" id="screen-say">
+    <h2>Say it like a local</h2>
+    <p class="intro">Write something the way you normally would. See how a native speaker would say it, and why each change sounds more natural.</p>
+    <div class="field">
+      <label class="label" for="say-text">What you want to say</label>
+      <textarea id="say-text">I am very tired today because yesterday I stayed at work until late. Maybe we can postpone our meeting for another day?</textarea>
+    </div>
+    <div class="field">
+      <span class="label" id="say-ctx-l">Where you'd say it</span>
+      <div class="chips" id="say-ctx" role="group" aria-labelledby="say-ctx-l">
+        <button aria-pressed="true" data-v="a text to a friend">Text to a friend</button>
+        <button aria-pressed="false" data-v="a casual chat with a coworker">Coworker chat</button>
+        <button aria-pressed="false" data-v="a work email">Work email</button>
+        <button aria-pressed="false" data-v="speaking out loud in a conversation">Out loud</button>
+      </div>
+    </div>
+    <button class="btn wide" id="say-go">Make it sound native</button>
+    <p class="status" id="say-status" role="status"></p>
+    <div id="say-out"></div>
+  </section>
+
+  <!-- DECODE -->
+  <section class="screen" id="screen-decode" hidden>
+    <h2>Decode</h2>
+    <p class="intro">Paste something you only half got: a line from a show, a Slack message, something a coworker said. Get the slang and the tone explained, then use it yourself.</p>
+    <div class="field">
+      <label class="label" for="dec-text">What you heard or read</label>
+      <textarea id="dec-text">Honestly that meeting was a total dumpster fire, but Mike really came through in the end. I'm gonna call it a day.</textarea>
+    </div>
+    <div class="field">
+      <label class="label" for="dec-where">Where it came from (optional)</label>
+      <input type="text" id="dec-where" placeholder="A coworker on Slack, a TV show, a podcast">
+    </div>
+    <button class="btn wide" id="dec-go">Decode it</button>
+    <p class="status" id="dec-status" role="status"></p>
+    <div id="dec-out"></div>
+  </section>
+
+  <!-- MY PHRASES -->
+  <section class="screen" id="screen-deck" hidden>
+    <div class="deck-head">
+      <h2>My phrases</h2>
+      <span class="count" id="deck-count"></span>
+    </div>
+    <p class="intro">Practice works the other way round: you see the meaning and a situation, and you come up with the phrase.</p>
+    <div id="review"></div>
+    <ul class="list" id="deck-list"></ul>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="screen" id="screen-settings" hidden>
+    <h2>Settings</h2>
+    <div class="field">
+      <label class="label" for="api-key">Anthropic API key</label>
+      <input type="password" id="api-key" autocomplete="off" spellcheck="false" placeholder="sk-ant-...">
+      <p class="note">Your key is saved only on this phone, in this browser. Nativify sends it straight to Anthropic and nowhere else.</p>
+    </div>
+    <div class="row">
+      <button class="btn" id="key-save">Save key</button>
+      <button class="btn ghost" id="key-clear">Remove key</button>
+    </div>
+    <p class="status" id="key-status" role="status"></p>
+    <div class="banner">
+      <h3>How to get a key</h3>
+      <ol class="steps">
+        <li>Go to <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a> and sign in.</li>
+        <li>Add a small prepaid balance under Billing, and set a monthly spend limit.</li>
+        <li>Open API Keys, create a key, and paste it above.</li>
+      </ol>
+      <p class="note">Each rewrite or decode costs a few cents at most.</p>
+    </div>
+    <div class="field">
+      <span class="label">Add to your home screen</span>
+      <p class="note">On iPhone, tap Share, then "Add to Home Screen". On Android, open the browser menu and tap "Add to Home screen". Nativify then opens like an app.</p>
+    </div>
+    <div class="field">
+      <span class="label">Your phrases</span>
+      <p class="note" id="deck-size"></p>
+      <div class="row"><button class="btn ghost small" id="wipe">Delete all saved phrases</button></div>
+    </div>
+    <button class="btn ghost" id="close-settings">Done</button>
+  </section>
+</div>
+
+<nav class="tabbar" aria-label="Sections">
+  <div class="in" role="tablist">
+    <button role="tab" id="tab-say" aria-selected="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/><path d="M8.5 11h7M8.5 14h4"/></svg>
+      Say it
+    </button>
+    <button role="tab" id="tab-decode" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/><path d="M8 10.5h5"/></svg>
+      Decode
+    </button>
+    <button role="tab" id="tab-deck" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="14" height="14" rx="2"/><path d="M7 3h12a2 2 0 0 1 2 2v12"/></svg>
+      My phrases
+      <span class="badge" id="due-badge" hidden></span>
+    </button>
+  </div>
+</nav>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const DAY = 864e5;
+const STEPS = [1, 3, 7, 16, 35, 80];     // days until the next review after each correct answer
+const MODEL = "claude-opus-5-5";
+
+/* ---------- safe local storage ---------- */
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+let apiKey = store.get("nv-key", "");
+let phrases = store.get("nv-phrases", []);
+const savePhrases = () => { store.set("nv-phrases", phrases); updateCounts(); };
+
+/* ---------- navigation ---------- */
+const screens = ["say","decode","deck","settings"];
+let current = "say";
+function show(name){
+  current = name;
+  screens.forEach(s => $("#screen-"+s).hidden = s !== name);
+  ["say","decode","deck"].forEach(t => $("#tab-"+t).setAttribute("aria-selected", t === name));
+  $("#key-banner").hidden = !!apiKey || name === "settings" || name === "deck";
+  if(name === "deck") renderDeck();
+  if(name === "settings"){ $("#api-key").value = apiKey; $("#key-status").textContent = ""; updateCounts(); }
+  if(name !== "settings") store.set("nv-tab", name);
+  window.scrollTo(0, 0);
+}
+["say","decode","deck"].forEach(t => $("#tab-"+t).onclick = () => show(t));
+$("#open-settings").onclick = () => show("settings");
+$("#banner-settings").onclick = () => show("settings");
+$("#close-settings").onclick = () => show(store.get("nv-tab","say"));
+
+$("#say-ctx").addEventListener("click", e => {
+  const b = e.target.closest("button"); if(!b) return;
+  $("#say-ctx").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
+});
+const sayCtx = () => $("#say-ctx [aria-pressed=true]").dataset.v;
+
+/* ---------- settings ---------- */
+$("#key-save").onclick = async () => {
+  const k = $("#api-key").value.trim();
+  const st = $("#key-status");
+  if(!k){ st.className = "status err"; st.textContent = "Paste your key first."; return; }
+  apiKey = k; store.set("nv-key", k);
+  st.className = "status thinking"; st.textContent = "Checking your key";
+  try{
+    await callClaude('Reply with only this JSON: {"ok": true}', "low", 50);
+    st.className = "status"; st.textContent = "Key saved and working.";
+  }catch(e){
+    st.className = "status err"; st.textContent = "Saved, but the test failed: " + e.message;
+  }
+};
+$("#key-clear").onclick = () => { apiKey = ""; store.del("nv-key"); $("#api-key").value = ""; $("#key-status").className = "status"; $("#key-status").textContent = "Key removed from this phone."; };
+$("#wipe").onclick = e => {
+  const b = e.currentTarget;
+  if(!b.dataset.confirm){ b.dataset.confirm = "1"; b.textContent = "Tap again to delete all"; return; }
+  phrases = []; savePhrases(); b.dataset.confirm = ""; b.textContent = "Delete all saved phrases";
+};
+
+/* ---------- Claude ---------- */
+class AppError extends Error {}
+async function callClaude(prompt, effort, maxTokens){
+  if(!apiKey) throw new AppError("Add your API key in Settings first.");
+  let res;
+  try{
+    res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-beta": "server-side-fallback-2026-07-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: maxTokens || 4000,
+        output_config: { effort: effort || "low" },
+        fallbacks: "default",
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+  }catch(e){ throw new AppError("Couldn't reach Anthropic. Check your internet connection and try again."); }
+  let data = null;
+  try{ data = await res.json(); }catch(e){}
+  if(!res.ok){
+    const msg = data?.error?.message || "";
+    if(res.status === 401) throw new AppError("Your API key wasn't accepted. Check it in Settings.");
+    if(res.status === 429) throw new AppError("Too many requests right now. Wait a minute and try again.");
+    if(res.status === 400 && /credit|balance|billing/i.test(msg)) throw new AppError("Your Anthropic account is out of credit. Add some under Billing in the Anthropic console.");
+    if(res.status >= 500 || res.status === 529) throw new AppError("Anthropic is busy right now. Try again in a moment.");
+    throw new AppError(msg || ("Request failed (" + res.status + ")."));
+  }
+  if(data?.stop_reason === "refusal") throw new AppError("Claude wouldn't answer this one. Try rewording it.");
+  const text = (data?.content || []).filter(b => b.type === "text").map(b => b.text).join("");
+  return parseJSON(text);
+}
+function parseJSON(text){
+  const t = String(text || "").trim();
+  try{ return JSON.parse(t); }catch(e){}
+  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if(fence){ try{ return JSON.parse(fence[1]); }catch(e){} }
+  const a = t.indexOf("{"), b = t.lastIndexOf("}");
+  if(a >= 0 && b > a){ try{ return JSON.parse(t.slice(a, b+1)); }catch(e){} }
+  throw new AppError("The answer came back in an unexpected shape. Try again.");
+}
+async function run(btn, statusEl, label, fn){
+  if(!apiKey){ show("settings"); $("#key-status").className = "status"; $("#key-status").textContent = "Add your API key to use your own sentences."; return null; }
+  btn.disabled = true;
+  statusEl.className = "status thinking"; statusEl.textContent = label;
+  try{ const r = await fn(); statusEl.className = "status"; statusEl.textContent = ""; return r; }
+  catch(e){ statusEl.className = "status err"; statusEl.textContent = e instanceof AppError ? e.message : "Something went wrong. Try again."; return null; }
+  finally{ btn.disabled = false; }
+}
+
+const AUDIENCE = "The user is an advanced, long-time English speaker living in the US (C1/C2 level). Their English is correct and works for everyday and professional life; they want to sound like a native speaker: natural colloquial phrasing, idioms, phrasal verbs, contractions and the right register. Use American English. Be warm and plain-spoken.";
+
+/* ---------- phrases ---------- */
+function addPhrase(p){
+  const key = (p.phrase || "").trim().toLowerCase();
+  if(!key) return "empty";
+  if(phrases.some(x => (x.phrase || "").trim().toLowerCase() === key)) return "exists";
+  phrases.push({ id: "p" + Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+    phrase: p.phrase.trim(), meaning: p.meaning || "", situation: p.situation || "", example: p.example || "",
+    tone: p.tone || "", source: p.source, step: 0, due: Date.now(), created: Date.now() });
+  savePhrases(); return "ok";
+}
+function saveButton(btn, p){
+  btn.onclick = () => {
+    const r = addPhrase(p);
+    const s = document.createElement("span"); s.className = "saved";
+    s.textContent = r === "exists" ? "Already in My phrases" : "Saved to My phrases";
+    btn.replaceWith(s);
+  };
+}
+const dueList = () => { const now = Date.now(); return phrases.filter(p => (p.due || 0) <= now); };
+function updateCounts(){
+  const n = phrases.length, d = dueList().length;
+  const badge = $("#due-badge"); badge.hidden = !d; badge.textContent = d;
+  $("#deck-count").textContent = n ? `${d} to practice · ${n} saved` : "";
+  $("#deck-size").textContent = n ? `${n} phrase${n>1?"s":""} saved on this phone.` : "No phrases saved yet.";
+}
+
+/* ---------- Say it like a local ---------- */
+function highlight(text, bits){
+  const spans = [], low = text.toLowerCase();
+  bits.filter(Boolean).forEach(b => {
+    const i = low.indexOf(String(b).toLowerCase());
+    if(i >= 0 && !spans.some(s => i < s[1] && i + b.length > s[0])) spans.push([i, i + b.length]);
+  });
+  spans.sort((a,b) => a[0] - b[0]);
+  let out = "", pos = 0;
+  for(const [s,e] of spans){ out += esc(text.slice(pos,s)) + "<mark>" + esc(text.slice(s,e)) + "</mark>"; pos = e; }
+  return out + esc(text.slice(pos));
+}
+function renderSay(r, isExample){
+  const swaps = Array.isArray(r.swaps) ? r.swaps : [];
+  const out = $("#say-out");
+  out.innerHTML = `<div class="result">
+    ${isExample ? '<span class="flag">Example</span>' : ""}
+    <div class="field"><span class="label">How a native would say it</span>
+      <p class="native">${highlight(String(r.native || ""), swaps.map(s => s.better))}</p></div>
+    ${r.note ? `<p class="why">${esc(r.note)}</p>` : ""}
+    ${swaps.length ? `<div class="field"><span class="label">What changed</span>
+    <ul class="items">${swaps.map((s,i) => `<li>
+      <div class="swap-line"><span class="was">${esc(s.original)}</span><span class="arrow" aria-hidden="true">→</span><span class="now">${esc(s.better)}</span>${s.register ? `<span class="reg">${esc(s.register)}</span>` : ""}</div>
+      <p class="why">${esc(s.why)}</p>
+      <div class="row"><button class="btn ghost small" data-i="${i}">Save phrase</button></div>
+    </li>`).join("")}</ul></div>` : `<p class="why">That already sounds natural.</p>`}
+  </div>`;
+  out.querySelectorAll("[data-i]").forEach(b => {
+    const s = swaps[+b.dataset.i];
+    saveButton(b, { phrase: s.better, meaning: s.meaning || s.why, situation: s.situation || ("Instead of “" + s.original + "”"), example: s.example || r.native, tone: s.register, source: "say" });
+  });
+}
+$("#say-go").onclick = async () => {
+  const text = $("#say-text").value.trim();
+  if(!text){ $("#say-status").className = "status err"; $("#say-status").textContent = "Write a sentence or two first."; return; }
+  const prompt = `${AUDIENCE}
+
+Rewrite the user's text the way a native speaker would naturally say it in ${sayCtx()}. Keep their meaning and roughly the same length. Change only what makes it sound non-native, stiff or textbook-like; if a part is already natural, keep it.
+
+Reply with only JSON in this shape, no other text:
+{"native": "the full rewritten text",
+ "note": "one short sentence on the overall tone shift, or empty",
+ "swaps": [{"original": "exact words from the user's text", "better": "exact words as they appear in native", "why": "one plain sentence on why a native says it this way", "meaning": "what the new phrase means, in plain words", "situation": "a short situation where you'd use it, without the phrase itself", "example": "another natural example sentence using it", "register": "casual | neutral | formal"}]}
+Give 0 to 6 swaps, most useful first.
+
+User's text:
+"""${text.slice(0, 4000)}"""`;
+  const r = await run($("#say-go"), $("#say-status"), "Rewriting", () => callClaude(prompt, "low"));
+  if(r) renderSay(r, false);
+};
+
+/* ---------- Decode ---------- */
+function renderDecode(r, isExample){
+  const ps = Array.isArray(r.phrases) ? r.phrases : [];
+  const out = $("#dec-out");
+  out.innerHTML = `<div class="result">
+    ${isExample ? '<span class="flag">Example</span>' : ""}
+    <div class="field"><span class="label">In plain words</span><p>${esc(r.plain)}</p></div>
+    ${r.tone ? `<div class="field"><span class="label">Tone</span><p class="why">${esc(r.tone)}</p></div>` : ""}
+    ${ps.length ? `<div class="field"><span class="label">Phrases to own</span>
+    <ul class="items">${ps.map((p,i) => `<li>
+      <div class="swap-line"><span class="phrase">${esc(p.phrase)}</span>${p.register ? `<span class="reg">${esc(p.register)}</span>` : ""}</div>
+      <p>${esc(p.meaning)}</p>
+      ${p.example ? `<p class="ex">“${esc(p.example)}”</p>` : ""}
+      <div class="useit">
+        <label class="label" for="use-${i}">Your turn: ${esc(p.challenge || "use it in a sentence about your own life")}</label>
+        <textarea id="use-${i}" placeholder="Write your sentence"></textarea>
+        <div class="row"><button class="btn small" data-check="${i}">Check my sentence</button><button class="btn ghost small" data-save="${i}">Save phrase</button></div>
+        <p class="fb" id="fb-${i}" role="status"></p>
+      </div>
+    </li>`).join("")}</ul></div>` : ""}
+  </div>`;
+  out.querySelectorAll("[data-save]").forEach(b => {
+    const p = ps[+b.dataset.save];
+    saveButton(b, { phrase: p.phrase, meaning: p.meaning, situation: p.situation, example: p.example, tone: p.register, source: "decode" });
+  });
+  out.querySelectorAll("[data-check]").forEach(b => b.onclick = () => {
+    const i = +b.dataset.check;
+    checkUse(ps[i], $("#use-" + i).value.trim(), $("#fb-" + i), b);
+  });
+}
+async function checkUse(p, sentence, fb, btn){
+  if(!sentence){ fb.className = "fb"; fb.textContent = "Write a sentence first."; return; }
+  const prompt = `${AUDIENCE}
+
+The user is practicing the expression "${p.phrase}" (${p.meaning}). Judge their sentence like a friendly native-speaker coach: is the expression used correctly and naturally?
+
+Reply with only JSON, no other text: {"verdict": "natural" | "close" | "off", "feedback": "one or two plain, encouraging sentences", "better": "a more natural version of their sentence, or empty if it's already natural"}
+
+Their sentence: """${sentence.slice(0, 1000)}"""`;
+  const r = await run(btn, fb, "Checking", () => callClaude(prompt, "low", 1500));
+  if(!r) { fb.classList.remove("status"); fb.classList.add("fb"); return; }
+  fb.className = "fb " + (r.verdict === "natural" ? "ok" : "close");
+  fb.textContent = (r.verdict === "natural" ? "Sounds natural. " : r.verdict === "close" ? "Almost. " : "Not quite. ") + (r.feedback || "") + (r.better ? " Try: “" + r.better + "”" : "");
+}
+$("#dec-go").onclick = async () => {
+  const text = $("#dec-text").value.trim();
+  if(!text){ $("#dec-status").className = "status err"; $("#dec-status").textContent = "Paste what you heard or read first."; return; }
+  const where = $("#dec-where").value.trim();
+  const prompt = `${AUDIENCE}
+
+The user ran into this${where ? " (" + where.slice(0, 200) + ")" : ""} and only half understood it. Explain it so they fully get it, then pick the colloquial expressions, idioms, slang or phrasal verbs worth learning to use themselves. Skip words an advanced speaker already knows.
+
+Reply with only JSON in this shape, no other text:
+{"plain": "what it means, in plain everyday words",
+ "tone": "one sentence on the tone or attitude behind it, or empty",
+ "phrases": [{"phrase": "the expression in its base form", "meaning": "plain meaning", "register": "casual | neutral | formal | slang", "example": "a fresh natural example sentence", "situation": "a short situation where you'd use it, without the phrase itself", "challenge": "a short prompt asking the user to use it about their own life, e.g. 'describe a project at work that went badly'"}]}
+Give 1 to 5 phrases.
+
+Text:
+"""${text.slice(0, 4000)}"""`;
+  const r = await run($("#dec-go"), $("#dec-status"), "Decoding", () => callClaude(prompt, "low"));
+  if(r) renderDecode(r, false);
+};
+
+/* ---------- My phrases: list and practice ---------- */
+let reviewing = null;   // {queue, i, shown, typed}
+function fmtDue(t){
+  const d = Math.ceil(((t || 0) - Date.now()) / DAY);
+  return d <= 0 ? "now" : d === 1 ? "tomorrow" : "in " + d + " days";
+}
+function renderDeck(){
+  updateCounts();
+  const rev = $("#review"), list = $("#deck-list");
+  if(!phrases.length){
+    rev.innerHTML = `<div class="empty">No phrases yet. Tap <b>Save phrase</b> on anything in Say it or Decode, and it shows up here to practice. You can save the examples to try it out.</div>`;
+    list.innerHTML = ""; return;
+  }
+  if(reviewing) renderCard();
+  else {
+    const d = dueList().length;
+    rev.innerHTML = d
+      ? `<button class="btn wide" id="start-rev">Practice ${d} phrase${d > 1 ? "s" : ""}</button>`
+      : `<div class="empty">You're all caught up. Saved phrases come back on a schedule, and sooner if you miss them.</div>`;
+    const s = $("#start-rev"); if(s) s.onclick = startReview;
+  }
+  const sorted = [...phrases].sort((a,b) => (a.due || 0) - (b.due || 0));
+  list.innerHTML = sorted.map(p => `<li><div><h3>${esc(p.phrase)}</h3><p class="m">${esc(p.meaning)}</p><button class="link" data-del="${esc(p.id)}">Remove</button></div><span class="due">${fmtDue(p.due)}</span></li>`).join("");
+  list.querySelectorAll("[data-del]").forEach(b => b.onclick = () => {
+    if(!b.dataset.confirm){ b.dataset.confirm = "1"; b.textContent = "Tap again to remove"; return; }
+    phrases = phrases.filter(x => x.id !== b.dataset.del); savePhrases(); renderDeck();
+  });
+}
+function startReview(){
+  const q = dueList();
+  for(let i = q.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [q[i], q[j]] = [q[j], q[i]]; }
+  reviewing = { queue: q, i: 0, shown: false, typed: "" };
+  renderCard();
+}
+function renderCard(){
+  const rev = $("#review"), r = reviewing, p = r.queue[r.i];
+  if(!p){ reviewing = null; rev.innerHTML = `<div class="empty">Done for now. Nice work.</div>`; return; }
+  rev.innerHTML = `<div class="card">
+    <span class="label">${r.i + 1} of ${r.queue.length}</span>
+    <p class="prompt">${esc(p.meaning)}</p>
+    ${p.situation ? `<p class="why">When: ${esc(p.situation)}</p>` : ""}
+    <div class="field"><label class="label" for="rev-in">Say it the native way</label>
+      <input type="text" id="rev-in" autocomplete="off" autocapitalize="off" placeholder="Type the phrase"></div>
+    ${r.shown ? `<div class="answer"><span class="label">The phrase</span><p class="phrase">${esc(p.phrase)}</p>${p.example ? `<p class="ex">“${esc(p.example)}”</p>` : ""}
+      <div class="row"><button class="btn small" id="r-good">I had it</button><button class="btn ghost small" id="r-again">Missed it</button></div></div>`
+      : `<button class="btn" id="r-show">Show the phrase</button>`}
+  </div>`;
+  const inp = $("#rev-in"); inp.value = r.typed || "";
+  inp.oninput = () => r.typed = inp.value;
+  if(!r.shown){
+    const reveal = () => { r.shown = true; renderCard(); };
+    $("#r-show").onclick = reveal;
+    inp.onkeydown = e => { if(e.key === "Enter") reveal(); };
+  } else {
+    $("#r-good").onclick = () => grade(true);
+    $("#r-again").onclick = () => grade(false);
+  }
+}
+function grade(ok){
+  const p = reviewing.queue[reviewing.i];
+  const live = phrases.find(x => x.id === p.id) || p;
+  if(ok){ live.step = Math.min((live.step || 0) + 1, STEPS.length); live.due = Date.now() + STEPS[live.step - 1] * DAY; }
+  else { live.step = 0; live.due = Date.now() + 10 * 60 * 1000; }   // missed: back in 10 minutes
+  reviewing.i++; reviewing.shown = false; reviewing.typed = "";
+  savePhrases(); renderDeck();
+}
+
+/* ---------- start in a working state ---------- */
+renderSay({
+  native: "I'm wiped today. I ended up staying late at work last night. Any chance we could push our meeting?",
+  note: "Shorter and more relaxed, the way you'd text someone you know.",
+  swaps: [
+    { original: "I am very tired", better: "I'm wiped", why: "Natives use contractions and a vivid word for being exhausted.", meaning: "very tired, out of energy", situation: "telling a friend you have nothing left today", example: "Can we skip the gym? I'm wiped.", register: "casual" },
+    { original: "stayed at work until late", better: "staying late", why: "“Stay late” already means staying at work after hours, so “at work until” isn't needed.", meaning: "work past normal hours", situation: "explaining why you got home at 9pm", example: "I'm staying late tonight to finish the report.", register: "neutral" },
+    { original: "Maybe we can postpone our meeting for another day?", better: "push our meeting", why: "“Push” is the everyday word for moving something later. “Postpone” sounds formal in a text.", meaning: "move to a later time", situation: "asking to move a plan to later", example: "Can we push lunch to Thursday?", register: "casual" }
+  ]
+}, true);
+renderDecode({
+  plain: "The meeting went really badly, but Mike fixed things or helped a lot at the end. The speaker is done working for today.",
+  tone: "Frustrated but light-hearted, the way coworkers vent to each other.",
+  phrases: [
+    { phrase: "a dumpster fire", meaning: "a complete mess, something that went very wrong", register: "slang", example: "The product launch was a dumpster fire from start to finish.", situation: "describing a chaotic disaster", challenge: "describe something at work or home that went badly" },
+    { phrase: "come through", meaning: "do what was needed, especially when people were counting on you", register: "casual", example: "I needed a ride at 5am and my sister came through.", situation: "thanking someone who helped when it mattered", challenge: "talk about someone who helped you out recently" },
+    { phrase: "call it a day", meaning: "stop working for now", register: "casual", example: "It's almost seven, let's call it a day.", situation: "stopping work in the evening", challenge: "say you're stopping work for today" }
+  ]
+}, true);
+updateCounts();
+const startTab = store.get("nv-tab", "say");
+show(["say","decode","deck"].includes(startTab) ? startTab : "say");
+</script>
+</body>
+</html>

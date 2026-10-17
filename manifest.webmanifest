@@ -1,0 +1,10 @@
+{
+  "name": "Nativify",
+  "short_name": "Nativify",
+  "description": "Sound like you grew up speaking English.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f3f5f4",
+  "theme_color": "#0d5c4f",
+  "icons": [{"src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}]
+}
