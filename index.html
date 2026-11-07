@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Nativify</title>
 <meta name="description" content="Sound like you grew up speaking English.">
-<meta name="theme-color" content="#3c3b6e">
+<meta name="theme-color" content="#f6f3ec" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1c1c22" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -17,18 +18,25 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..600,100&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@500&display=swap">
 <style>
-/* Layout: phone-first app shell. Sticky app bar on top, one scrolling screen, a tab bar at the bottom.
-   Look: calm but defined. Warm linen ground, crisp 1.5px navy outlines (--edge) on everything you can touch or type in, softer lines (--edge-soft) on containers, one navy accent, butter-yellow highlights. */
+/* Layout: a native-style app shell. The page itself never scrolls. Each tab is a stack of full-screen views:
+   a root view (large title that collapses into the nav bar) and pushed views that slide in from the right.
+   Practice opens as a full-screen modal, Settings as a bottom sheet, and a welcome pager greets first-time visitors.
+   Look: calm but defined. Warm linen ground, crisp 1.5px navy outlines (--edge) on everything you can touch or type in,
+   softer lines (--edge-soft) on containers, one navy accent, butter-yellow highlights. */
 :root{
   --bg:#f6f3ec; --surface:#fffdf9; --soft:#efeae0; --ink:#2a2a40; --muted:#666474; --line:#e6e0d4;
   --accent:#3c3b6e; --accent-ink:#ffffff; --accent-soft:#ebe9f3;
   --hl:#f8e8a6; --hl-ink:#2a2a40; --strike:#a24b3c; --good:#3f7a52; --warn:#8a6418; --calm:#e3eadd;
   --edge:#3c3b6e; --edge-soft:#d3cbbb;
-  --shadow:0 1px 0 rgba(60,50,30,.04),0 8px 24px -14px rgba(60,50,30,.22);
+  --shadow:0 1px 0 rgba(60,50,30,.04),0 10px 28px -16px rgba(60,50,30,.28);
   --r-card:22px; --r-ctl:16px;
   --display:"Fraunces",Georgia,"Times New Roman",serif;
   --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --st:env(safe-area-inset-top,0px); --sb:env(safe-area-inset-bottom,0px);
+  --sl:max(20px,env(safe-area-inset-left,0px)); --sr:max(20px,env(safe-area-inset-right,0px));
+  --tabh:calc(66px + var(--sb));
+  --ease:cubic-bezier(.32,.72,0,1);
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){:root{
@@ -36,198 +44,317 @@
   --accent:#c7c6ef; --accent-ink:#1c1c22; --accent-soft:#2e2e45;
   --hl:#5c5023; --hl-ink:#fbf1cc; --strike:#ec9a8c; --good:#93d0a6; --warn:#e2bd72; --calm:#262e25;
   --edge:#8483c2; --edge-soft:#3d3d49;
-  --shadow:0 1px 0 rgba(0,0,0,.3),0 8px 24px -14px rgba(0,0,0,.6);
+  --shadow:0 1px 0 rgba(0,0,0,.3),0 10px 28px -16px rgba(0,0,0,.6);
   color-scheme:dark}}
-*{box-sizing:border-box}
-html,body{margin:0}
-body{background:var(--bg);color:var(--ink);font:17px/1.6 var(--body);-webkit-text-size-adjust:100%}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none}
+body{background:var(--bg);color:var(--ink);font:17px/1.55 var(--body);-webkit-text-size-adjust:100%}
+button{font:inherit;color:inherit;touch-action:manipulation;-webkit-user-select:none;user-select:none}
 [hidden]{display:none!important}
-.wrap{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:28px;
-  padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px));
-  padding-block:0 calc(112px + env(safe-area-inset-bottom,0px))}
-header.top{position:sticky;top:0;z-index:15;display:flex;justify-content:space-between;align-items:center;gap:12px;
-  margin:0 calc(-1 * max(20px,env(safe-area-inset-left,0px)));padding:calc(12px + env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) 12px max(20px,env(safe-area-inset-left,0px));
-  background:var(--bg);border-bottom:1.5px solid var(--edge-soft)}
-.logo{font:600 27px/1 var(--display);font-variation-settings:"SOFT" 100;margin:0;display:flex;align-items:center;gap:10px;letter-spacing:-.01em}
-.logo .mark{width:34px;height:34px;flex-shrink:0}
-.iconbtn{border:1.5px solid var(--edge);background:var(--surface);color:var(--ink);border-radius:14px;width:46px;height:46px;display:grid;place-items:center;cursor:pointer;transition:background .2s}
-.iconbtn:hover{background:var(--hl)}
-.iconbtn svg{width:24px;height:24px}
-h2{font:600 30px/1.15 var(--display);font-variation-settings:"SOFT" 100;margin:0;text-wrap:balance;letter-spacing:-.01em}
-h3{font:700 17px/1.3 var(--body);margin:0}
-p{margin:0}
+h2,h3,p{margin:0}
 .label{font:700 14px/1.3 var(--body);color:var(--muted)}
-section.screen{display:flex;flex-direction:column;gap:18px}
-section.screen:not([hidden]){animation:fade .35s ease-out}
-@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-.intro{color:var(--muted);font-size:16px;max-width:52ch}
-.field{display:flex;flex-direction:column;gap:8px}
-textarea,input[type=text],input[type=password]{font:inherit;font-size:17px;color:var(--ink);background:var(--surface);border:1.5px solid var(--edge);border-radius:var(--r-ctl);padding:14px 16px;width:100%;transition:box-shadow .2s}
-textarea{min-height:128px;resize:vertical}
+.caps{font:700 12.5px/1 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:0 4px}
+
+/* ---------- views and stacks ---------- */
+#app{position:fixed;inset:0;overflow:hidden}
+.stack{position:absolute;inset:0 0 var(--tabh) 0;overflow:hidden;opacity:0;visibility:hidden;transition:opacity .18s,visibility 0s .18s}
+.stack.active{opacity:1;visibility:visible;transition:opacity .18s}
+.view{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--bg);transition:transform .42s var(--ease)}
+.view.root::after{content:"";position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .42s var(--ease)}
+.stack.pushed > .view.root{transform:translateX(-28%)}
+.stack.pushed > .view.root::after{opacity:.08}
+.view.push{transform:translateX(100%);box-shadow:-12px 0 30px -12px rgba(0,0,0,.18);z-index:2}
+.view.push.in{transform:none}
+.view.dragging, .stack.dragging > .view.root{transition:none}
+
+.navbar{flex:none;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;
+  padding:var(--st) calc(var(--sr) - 8px) 0 calc(var(--sl) - 8px);height:calc(56px + var(--st));
+  border-bottom:1.5px solid transparent;transition:border-color .2s,background .2s;background:var(--bg);position:relative;z-index:3}
+.navbar .ttl{font:700 17px/1 var(--body);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:56vw}
+.root .navbar .ttl{opacity:0;transform:translateY(6px);transition:opacity .2s,transform .2s}
+.view.scrolled .navbar{border-bottom-color:var(--edge-soft)}
+.view.scrolled .navbar .ttl{opacity:1;transform:none}
+.navbar .l{justify-self:start} .navbar .r{justify-self:end}
+.navbar .mini-logo{width:30px;height:30px;margin-left:8px;display:block}
+.back{display:flex;align-items:center;gap:2px;border:0;background:none;color:var(--accent);font:700 17px var(--body);padding:8px 8px 8px 2px;min-height:44px;cursor:pointer}
+.back svg{width:26px;height:26px}
+.iconbtn{border:1.5px solid var(--edge);background:var(--surface);color:var(--ink);border-radius:14px;width:44px;height:44px;display:grid;place-items:center;cursor:pointer;transition:transform .12s,background .15s;padding:0}
+.iconbtn:active{transform:scale(.92);background:var(--hl)}
+.iconbtn svg{width:23px;height:23px}
+.scroller{flex:1;min-height:0;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;
+  padding:2px var(--sr) 28px var(--sl);display:flex;flex-direction:column;gap:18px}
+.bigtitle{font:600 34px/1.1 var(--display);font-variation-settings:"SOFT" 100;letter-spacing:-.015em;margin-top:2px;text-wrap:balance}
+.sub{color:var(--muted);font-size:16px;margin-top:-10px;max-width:46ch}
+.actionbar{flex:none;padding:12px var(--sr) 12px var(--sl);background:var(--bg);border-top:1.5px solid var(--edge-soft);display:flex;gap:10px}
+.actionbar .btn{flex:1}
+
+/* ---------- controls ---------- */
+textarea,input[type=text],input[type=password]{font:inherit;font-size:17px;color:var(--ink);background:var(--surface);border:1.5px solid var(--edge);border-radius:var(--r-ctl);padding:14px 16px;width:100%}
+textarea{resize:none}
 textarea:focus,input:focus{outline:none;box-shadow:0 0 0 4px var(--hl)}
 button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
-.chips{display:flex;flex-wrap:wrap;gap:8px}
-.chips button{font:600 15px var(--body);border:1.5px solid var(--edge);background:var(--surface);color:var(--ink);padding:9px 16px;min-height:44px;border-radius:999px;cursor:pointer;transition:background .2s,transform .15s}
-.chips button[aria-pressed="true"]{background:var(--hl);color:var(--hl-ink);font-weight:700}
-.chips button[aria-pressed="true"]::before{content:"\2713\00a0"}
-.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-.btn{font:700 17px var(--body);border:1.5px solid var(--edge);border-radius:var(--r-ctl);padding:14px 24px;min-height:54px;cursor:pointer;background:var(--accent);color:var(--accent-ink);transition:transform .15s,opacity .2s}
-.btn:active:not(:disabled){transform:scale(.98)}
+.btn{font:700 17px var(--body);border:1.5px solid var(--edge);border-radius:var(--r-ctl);padding:14px 22px;min-height:54px;cursor:pointer;background:var(--accent);color:var(--accent-ink);
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .12s,opacity .2s,filter .15s}
+.btn:active:not(:disabled){transform:scale(.97);filter:brightness(.92)}
 .btn.wide{width:100%}
 .btn.ghost{background:var(--surface);color:var(--ink)}
-.btn.ghost:hover{background:var(--hl)}
+.btn.yellow{background:var(--hl);color:var(--hl-ink)}
 .btn.small{font-size:15px;padding:8px 16px;min-height:42px;border-radius:12px}
+.btn.danger{background:var(--surface);color:var(--strike);border-color:var(--strike)}
 .btn:disabled{opacity:.5;cursor:default}
-.status{color:var(--muted);font-size:15px;min-height:1.2em}
-.status.err{color:var(--strike)}
-.thinking::after{content:"";display:inline-block;width:1.2em;text-align:left;animation:dots 1.2s steps(4) infinite}
-@keyframes dots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
-.result{background:var(--surface);border:1.5px solid var(--edge);border-radius:var(--r-card);box-shadow:var(--shadow);padding:22px 20px;display:flex;flex-direction:column;gap:18px;min-width:0}
+.btn.busy::after{content:"";width:16px;height:16px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* composer: one outlined card holding the inputs */
+.composer{background:var(--surface);border:1.5px solid var(--edge);border-radius:var(--r-card);box-shadow:var(--shadow);overflow:hidden}
+.composer .lab{display:block;padding:14px 18px 0}
+.composer textarea,.composer input{border:0;border-radius:0;background:transparent;padding:6px 18px 16px;box-shadow:none}
+.composer textarea{min-height:150px}
+.composer textarea:focus,.composer input:focus{box-shadow:none}
+.composer:focus-within{box-shadow:0 0 0 4px var(--hl),var(--shadow)}
+.composer hr{border:0;border-top:1.5px solid var(--edge-soft);margin:0}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 calc(-1 * var(--sr)) 0 calc(-1 * var(--sl));padding:2px var(--sr) 4px var(--sl);scroll-padding-left:var(--sl)}
+.chips::-webkit-scrollbar{display:none}
+.chips button{flex:none;font:600 15px var(--body);border:1.5px solid var(--edge);background:var(--surface);color:var(--ink);padding:9px 16px;min-height:44px;border-radius:999px;cursor:pointer;transition:background .15s,transform .12s}
+.chips button:active{transform:scale(.95)}
+.chips button[aria-pressed="true"]{background:var(--hl);color:var(--hl-ink);font-weight:700}
+.chips button[aria-pressed="true"]::before{content:"\2713\00a0"}
+.notice{display:flex;align-items:center;gap:12px;background:var(--calm);border:1.5px solid var(--edge-soft);border-radius:18px;padding:12px 14px;font-size:15px;cursor:pointer;text-align:left;width:100%}
+.notice b{display:block}
+.notice .chev{margin-left:auto;flex:none;width:20px;height:20px;color:var(--muted)}
+.err{color:var(--strike);font-size:15px}
+.err:empty{display:none}
+
+/* ---------- grouped lists (inset, like a settings app) ---------- */
+.group{background:var(--surface);border:1.5px solid var(--edge);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}
+.cell{display:flex;align-items:center;gap:12px;min-height:58px;padding:12px 16px;width:100%;border:0;background:none;text-align:left;cursor:pointer;transition:background .12s}
+.cell + .cell{border-top:1.5px solid var(--edge-soft)}
+button.cell:active{background:var(--soft)}
+.cell .txt{flex:1;min-width:0}
+.cell .t{font-weight:700;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cell .m{color:var(--muted);font-size:14.5px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cell .chev{flex:none;width:18px;height:18px;color:var(--muted)}
+.cell.static{cursor:default;flex-direction:column;align-items:stretch}
+.pill{flex:none;font:700 12.5px/1 var(--body);padding:6px 10px;border-radius:999px;border:1.5px solid var(--edge-soft);color:var(--muted);white-space:nowrap}
+.pill.due{background:var(--hl);color:var(--hl-ink);border-color:var(--edge)}
+
+/* ---------- result cards ---------- */
+.card{background:var(--surface);border:1.5px solid var(--edge);border-radius:var(--r-card);box-shadow:var(--shadow);padding:20px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.card.hero{padding:22px 20px 24px}
 .flag{align-self:flex-start;font:700 12.5px/1 var(--body);padding:6px 12px;border-radius:999px;background:var(--calm);color:var(--ink);border:1.5px solid var(--edge-soft)}
-.native{font:400 21px/1.6 var(--display);font-variation-settings:"SOFT" 100;overflow-wrap:anywhere}
+.native{font:400 23px/1.55 var(--display);font-variation-settings:"SOFT" 100;overflow-wrap:anywhere}
 mark{background:var(--hl);color:var(--hl-ink);padding:1px 5px;border-radius:8px 6px 9px 5px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
-.items{display:flex;flex-direction:column;list-style:none;padding:0;margin:0}
-.items > li{display:flex;flex-direction:column;gap:8px;padding-block:16px;border-top:1.5px solid var(--edge-soft)}
-.swap-line{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline}
-.was{color:var(--strike);text-decoration:line-through;text-decoration-thickness:1px}
-.arrow{color:var(--muted)}
-.now{font-weight:700}
 .why{color:var(--muted);font-size:15.5px}
-.reg{font:700 12px/1 var(--body);padding:5px 9px;border-radius:999px;border:1.5px solid var(--edge-soft);color:var(--muted)}
-.phrase{font:600 23px/1.3 var(--display);font-variation-settings:"SOFT" 100}
+.card-top{display:flex;align-items:flex-start;gap:12px}
+.card-top > :first-child{flex:1;min-width:0}
+.swap-line{display:flex;flex-direction:column;gap:2px}
+.was{color:var(--strike);text-decoration:line-through;text-decoration-thickness:1px;font-size:15.5px}
+.now{font:600 21px/1.3 var(--display);font-variation-settings:"SOFT" 100}
+.reg{align-self:flex-start;font:700 12px/1 var(--body);padding:5px 9px;border-radius:999px;border:1.5px solid var(--edge-soft);color:var(--muted)}
+.phrase{font:600 24px/1.25 var(--display);font-variation-settings:"SOFT" 100}
 .ex{font-style:italic;color:var(--muted);font-size:15.5px}
-.useit{display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:18px;background:var(--calm);border:1.5px solid var(--edge-soft)}
-.useit textarea{min-height:76px;background:var(--surface)}
+.save{flex:none;width:44px;height:44px;border-radius:14px;border:1.5px solid var(--edge);background:var(--surface);display:grid;place-items:center;cursor:pointer;color:var(--ink);transition:transform .15s,background .2s;padding:0}
+.save svg{width:22px;height:22px}
+.save:active{transform:scale(.9)}
+.save[aria-pressed="true"]{background:var(--hl);color:var(--hl-ink)}
+.save[aria-pressed="true"] svg path{fill:currentColor}
+.useit{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:16px;background:var(--calm);border:1.5px solid var(--edge-soft)}
+.useit textarea{min-height:84px}
 .fb{font-size:15.5px}
+.fb:empty{display:none}
 .fb.ok{color:var(--good)} .fb.close{color:var(--warn)}
-.saved{color:var(--good);font-weight:700;font-size:15px}
-.deck-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:baseline}
-.count{font:700 14px var(--body);color:var(--muted);font-variant-numeric:tabular-nums}
-.card{background:var(--surface);border:1.5px solid var(--edge);border-radius:var(--r-card);box-shadow:var(--shadow);padding:28px 22px;display:flex;flex-direction:column;gap:16px}
-.card .prompt{font:400 21px/1.5 var(--display);font-variation-settings:"SOFT" 100}
-.answer{border-top:1.5px dashed var(--edge-soft);padding-top:16px;display:flex;flex-direction:column;gap:8px}
-.empty{color:var(--muted);background:var(--surface);border:1.5px dashed var(--edge-soft);border-radius:var(--r-card);padding:22px 20px}
-.list{display:flex;flex-direction:column;list-style:none;padding:0;margin:0}
-.list li{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding-block:14px;border-top:1.5px solid var(--edge-soft)}
-.list li > div{min-width:0}
-.list .m{color:var(--muted);font-size:15px}
-.list .due{font:700 13px var(--body);color:var(--muted);white-space:nowrap;padding-top:4px}
-.link{background:none;border:0;color:var(--muted);font:inherit;font-size:14px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:6px 0;justify-self:start}
-.banner{display:flex;flex-direction:column;gap:12px;background:var(--calm);border:1.5px solid var(--edge-soft);border-radius:var(--r-card);padding:18px 20px}
-.banner p{font-size:15.5px}
+
+/* ---------- My phrases ---------- */
+.due-card{background:var(--accent);color:var(--accent-ink);border:1.5px solid var(--edge);border-radius:var(--r-card);padding:22px 20px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.due-card .n{font:600 56px/1 var(--display);font-variation-settings:"SOFT" 100}
+.due-card p{opacity:.85}
+.due-card .btn{align-self:flex-start;border-color:var(--hl)}
+.due-card .deco{position:absolute;right:-18px;top:-14px;width:130px;opacity:.16;transform:rotate(12deg)}
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;padding:34px 22px;background:var(--surface);border:1.5px dashed var(--edge-soft);border-radius:var(--r-card)}
+.empty .em{width:64px;height:64px;border-radius:20px;background:var(--hl);border:1.5px solid var(--edge);display:grid;place-items:center}
+.empty .em svg{width:34px;height:34px}
+.empty h3{font:600 22px/1.2 var(--display);font-variation-settings:"SOFT" 100}
+.empty p{color:var(--muted);font-size:15.5px;max-width:30ch}
+.detail{display:flex;flex-direction:column;gap:16px}
+.detail .big{font:600 34px/1.15 var(--display);font-variation-settings:"SOFT" 100;text-wrap:balance}
+.kv{display:flex;flex-direction:column;gap:4px}
+
+/* ---------- practice modal ---------- */
+.modal{position:fixed;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column;transform:translateY(100%);transition:transform .45s var(--ease),visibility 0s .45s;visibility:hidden}
+.modal.in{transform:none;visibility:visible;transition:transform .45s var(--ease)}
+.progress{flex:1;height:10px;border-radius:999px;border:1.5px solid var(--edge);background:var(--surface);overflow:hidden;margin:0 8px}
+.progress i{display:block;height:100%;background:var(--hl);border-right:1.5px solid var(--edge);transition:width .4s var(--ease)}
+.progress i[style*="width: 0"]{border-right:0}
+.pr-body{flex:1;min-height:0;overflow-y:auto;padding:12px var(--sr) 20px var(--sl);display:flex;flex-direction:column;gap:16px}
+.flash{perspective:1400px;flex:none}
+.flash-in{position:relative;display:grid;transform-style:preserve-3d;transition:transform .6s var(--ease)}
+.flash.flipped .flash-in{transform:rotateY(180deg)}
+.face{grid-area:1/1;backface-visibility:hidden;-webkit-backface-visibility:hidden;background:var(--surface);border:1.5px solid var(--edge);border-radius:26px;box-shadow:var(--shadow);
+  padding:26px 22px;display:flex;flex-direction:column;gap:14px;min-height:300px}
+.face.back{transform:rotateY(180deg);background:var(--hl);color:var(--hl-ink)}
+.face .prompt{font:400 25px/1.4 var(--display);font-variation-settings:"SOFT" 100}
+.face .phrase{font-size:34px}
+.face.back .ex,.face.back .label{color:inherit;opacity:.75}
+.count-l{font:700 14px var(--body);color:var(--muted);text-align:center;font-variant-numeric:tabular-nums}
+.done{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;flex:1;padding:20px}
+.done .big{font:600 34px/1.15 var(--display);font-variation-settings:"SOFT" 100}
+.done .em{width:84px;height:84px;border-radius:28px;background:var(--hl);border:1.5px solid var(--edge);display:grid;place-items:center;animation:pop .5s var(--ease)}
+.done .em svg{width:44px;height:44px}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+
+/* ---------- bottom sheet ---------- */
+.sheet-wrap{position:fixed;inset:0;z-index:50;visibility:hidden;transition:visibility 0s .45s}
+.sheet-wrap.in{visibility:visible;transition:none}
+.scrim{position:absolute;inset:0;background:rgba(20,20,35,.38);opacity:0;transition:opacity .4s}
+.sheet-wrap.in .scrim{opacity:1}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:calc(100% - var(--st) - 24px);display:flex;flex-direction:column;background:var(--bg);
+  border:1.5px solid var(--edge);border-bottom:0;border-radius:26px 26px 0 0;transform:translateY(100%);transition:transform .45s var(--ease);max-width:640px;margin:0 auto}
+.sheet-wrap.in .sheet{transform:none}
+.sheet.dragging{transition:none}
+.sheet-head{flex:none;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:6px 12px 8px;touch-action:none}
+.grab{grid-column:1/-1;justify-self:center;width:42px;height:5px;border-radius:3px;background:var(--edge-soft);margin:4px 0 8px}
+.sheet-head .ttl{grid-column:2;font:700 17px var(--body)}
+.sheet-head .done-btn{grid-column:3;justify-self:end;border:0;background:none;color:var(--accent);font:700 17px var(--body);padding:8px;min-height:44px;cursor:pointer}
+.sheet-body{overflow-y:auto;overscroll-behavior:contain;padding:6px var(--sr) calc(28px + var(--sb)) var(--sl);display:flex;flex-direction:column;gap:12px}
+.sheet-body > *,.scroller > *,.pr-body > *{flex-shrink:0}
+.sheet-body .caps{margin-top:12px}
 .steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:15.5px}
 .note{color:var(--muted);font-size:14px}
-code{font:14px var(--mono);background:var(--soft);padding:2px 6px;border-radius:6px;overflow-wrap:anywhere}
+.status{color:var(--muted);font-size:15px}
+.status.bad{color:var(--strike)}
 a{color:var(--accent);text-underline-offset:3px}
-nav.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1.5px solid var(--edge-soft);
-  padding:8px max(12px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
+
+/* ---------- tab bar ---------- */
+nav.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;height:var(--tabh);background:var(--surface);border-top:1.5px solid var(--edge);
+  padding:6px max(10px,env(safe-area-inset-right,0px)) var(--sb) max(10px,env(safe-area-inset-left,0px))}
 nav.tabbar .in{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
-nav.tabbar button{border:0;background:transparent;color:var(--muted);font:600 13.5px/1.2 var(--body);display:flex;flex-direction:column;align-items:center;gap:4px;
-  padding:4px 4px 6px;min-height:58px;cursor:pointer;position:relative}
-nav.tabbar svg{width:64px;height:36px;padding:5px 19px;border:1.5px solid transparent;border-radius:999px;transition:background .25s,border-color .25s}
+nav.tabbar button{border:0;background:transparent;color:var(--muted);font:600 12.5px/1.2 var(--body);display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:2px 4px 4px;min-height:56px;cursor:pointer;position:relative}
+nav.tabbar svg{width:62px;height:34px;padding:5px 18px;border:1.5px solid transparent;border-radius:999px;transition:background .25s,border-color .25s,transform .2s}
+nav.tabbar button:active svg{transform:scale(.9)}
 nav.tabbar button[aria-selected="true"]{color:var(--ink);font-weight:700}
 nav.tabbar button[aria-selected="true"] svg{background:var(--hl);color:var(--hl-ink);border-color:var(--edge)}
-.badge{position:absolute;top:0;left:calc(50% + 12px);min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--accent);color:var(--accent-ink);font:700 11.5px/20px var(--body);text-align:center}
+.badge{position:absolute;top:-2px;left:calc(50% + 14px);min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--accent);color:var(--accent-ink);font:700 11.5px/20px var(--body);text-align:center;border:1.5px solid var(--surface)}
+
+/* ---------- toast ---------- */
+.toast{position:fixed;left:50%;bottom:calc(var(--tabh) + 14px);z-index:70;transform:translate(-50%,20px);opacity:0;pointer-events:none;
+  background:var(--accent);color:var(--accent-ink);font:700 15px var(--body);padding:12px 18px;border-radius:999px;border:1.5px solid var(--edge);box-shadow:var(--shadow);
+  transition:opacity .25s,transform .35s var(--ease);display:flex;align-items:center;gap:8px;white-space:nowrap}
+.toast.in{opacity:1;transform:translate(-50%,0)}
+.toast svg{width:18px;height:18px}
+
+/* ---------- welcome ---------- */
+.welcome{position:fixed;inset:0;z-index:80;background:var(--bg);display:flex;flex-direction:column;transition:transform .55s var(--ease),opacity .4s}
+.welcome.gone{transform:translateY(-6%);opacity:0;pointer-events:none}
+.w-top{flex:none;display:flex;justify-content:space-between;align-items:center;padding:calc(10px + var(--st)) calc(var(--sr) - 6px) 0 var(--sl);height:calc(56px + var(--st))}
+.w-brand{display:flex;align-items:center;gap:8px;font:600 21px/1 var(--display);font-variation-settings:"SOFT" 100}
+.w-brand img{width:30px;height:30px}
+.skip{border:0;background:none;color:var(--muted);font:700 16px var(--body);padding:10px;min-height:44px;cursor:pointer}
+.pages{flex:1;min-height:0;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}
+.pages::-webkit-scrollbar{display:none}
+.page{flex:0 0 100%;scroll-snap-align:center;scroll-snap-stop:always;display:flex;flex-direction:column;justify-content:center;gap:26px;padding:8px calc(var(--sr) + 8px) 8px calc(var(--sl) + 8px);overflow-y:auto}
+.page .art{display:grid;place-items:center;min-height:240px;position:relative}
+.page h2{font:600 36px/1.08 var(--display);font-variation-settings:"SOFT" 100;letter-spacing:-.02em;text-wrap:balance}
+.page p.lede{color:var(--muted);font-size:17px;max-width:34ch;margin-top:10px}
+.w-foot{flex:none;padding:14px var(--sr) calc(16px + var(--sb)) var(--sl);display:flex;flex-direction:column;gap:16px;align-items:center}
+.dots{display:flex;gap:8px}
+.dots i{width:8px;height:8px;border-radius:4px;background:var(--edge-soft);transition:width .3s var(--ease),background .3s}
+.dots i.on{width:26px;background:var(--edge)}
+.w-foot .btn{width:100%;max-width:440px}
+/* welcome art: little outlined cards */
+.hero-mark{width:150px;height:150px;border-radius:40px;background:var(--surface);border:1.5px solid var(--edge);box-shadow:var(--shadow);display:grid;place-items:center;transform:rotate(-4deg)}
+.hero-mark img{width:108px;height:108px}
+.bubble{position:absolute;background:var(--surface);border:1.5px solid var(--edge);border-radius:18px;padding:9px 14px;font:600 16px/1.2 var(--display);font-variation-settings:"SOFT" 100;box-shadow:var(--shadow);white-space:nowrap}
+.bubble.b1{top:14px;left:2%;transform:rotate(-6deg)}
+.bubble.b2{bottom:20px;right:0;transform:rotate(5deg);background:var(--hl);color:var(--hl-ink)}
+.bubble.b3{bottom:6px;left:6%;transform:rotate(-3deg);font:700 13px var(--body);color:var(--muted)}
+.mini{width:min(100%,330px);background:var(--surface);border:1.5px solid var(--edge);border-radius:22px;box-shadow:var(--shadow);padding:18px;display:flex;flex-direction:column;gap:10px;text-align:left}
+.mini.tilt{transform:rotate(-2.5deg)}
+.mini .was{font-size:15px}
+.mini .now{font-size:21px}
+.stackart{position:relative;width:min(100%,310px);height:220px}
+.stackart .mini{position:absolute;inset:0;height:200px;justify-content:center}
+.stackart .mini:nth-child(1){transform:rotate(7deg) translate(14px,10px);background:var(--soft)}
+.stackart .mini:nth-child(2){transform:rotate(-4deg);background:var(--hl);color:var(--hl-ink)}
+
+@media (min-width:700px){
+  .scroller,.pr-body{padding-left:calc(50% - 300px);padding-right:calc(50% - 300px)}
+  .actionbar{padding-left:calc(50% - 300px);padding-right:calc(50% - 300px)}
+}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <h1 class="logo"><img class="mark" src="icon.svg" alt=""><span class="word">Nati<span>vify</span></span></h1>
-    <button class="iconbtn" id="open-settings" aria-label="Settings">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.8 7.2c3-.2 6-.1 8.8 0M17.3 7.1h2.9M3.9 16.9h2.6M11.4 17c3-.1 5.9-.2 8.7 0"/><path d="M15 4.6c1.4 0 2.5 1.1 2.4 2.5 0 1.3-1.1 2.4-2.5 2.3-1.3 0-2.3-1.1-2.3-2.4.1-1.4 1.1-2.4 2.4-2.4z"/><path d="M9 14.6c1.4 0 2.5 1 2.4 2.4 0 1.4-1.1 2.4-2.5 2.4-1.3-.1-2.3-1.1-2.3-2.4.1-1.4 1.1-2.4 2.4-2.4z"/></svg>
-    </button>
-  </header>
+<div id="app">
 
-  <div class="banner" id="key-banner" hidden>
-    <p><b>You're looking at examples.</b> Add your Anthropic API key in Settings to rewrite and decode your own sentences.</p>
-    <div class="row"><button class="btn small" id="banner-settings">Open Settings</button></div>
+  <!-- ===== SAY IT ===== -->
+  <div class="stack active" id="stack-say">
+    <section class="view root">
+      <header class="navbar"><span class="l"><img class="mini-logo" src="icon.svg" alt=""></span><span class="ttl">Say it like a local</span>
+        <span class="r"><button class="iconbtn js-settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.8 7.2c3-.2 6-.1 8.8 0M17.3 7.1h2.9M3.9 16.9h2.6M11.4 17c3-.1 5.9-.2 8.7 0"/><path d="M15 4.6c1.4 0 2.5 1.1 2.4 2.5 0 1.3-1.1 2.4-2.5 2.3-1.3 0-2.3-1.1-2.3-2.4.1-1.4 1.1-2.4 2.4-2.4z"/><path d="M9 14.6c1.4 0 2.5 1 2.4 2.4 0 1.4-1.1 2.4-2.5 2.4-1.3-.1-2.3-1.1-2.3-2.4.1-1.4 1.1-2.4 2.4-2.4z"/></svg></button></span></header>
+      <div class="scroller">
+        <h2 class="bigtitle">Say it like a local</h2>
+        <p class="sub">Write it your way. See how a native would say it, and why.</p>
+        <button class="notice js-keynote" hidden><span><b>Try the example first</b>Add your API key to rewrite your own sentences.</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+        <div class="composer">
+          <label class="label lab" for="say-text">What you want to say</label>
+          <textarea id="say-text">I am very tired today because yesterday I stayed at work until late. Maybe we can postpone our meeting for another day?</textarea>
+        </div>
+        <span class="caps" id="say-ctx-l">Where you'd say it</span>
+        <div class="chips" id="say-ctx" role="group" aria-labelledby="say-ctx-l">
+          <button aria-pressed="true" data-v="a text to a friend">Text to a friend</button>
+          <button aria-pressed="false" data-v="a casual chat with a coworker">Coworker chat</button>
+          <button aria-pressed="false" data-v="a work email">Work email</button>
+          <button aria-pressed="false" data-v="speaking out loud in a conversation">Out loud</button>
+        </div>
+        <p class="err" id="say-err" role="status"></p>
+      </div>
+      <div class="actionbar"><button class="btn" id="say-go">Make it sound native</button></div>
+    </section>
+    <section class="view push" id="say-result" aria-label="Native version">
+      <header class="navbar"><span class="l"><button class="back js-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Say it</button></span><span class="ttl">Native version</span><span class="r"></span></header>
+      <div class="scroller" id="say-out"></div>
+    </section>
   </div>
 
-  <!-- SAY IT LIKE A LOCAL -->
-  <section class="screen" id="screen-say">
-    <h2>Say it like a local</h2>
-    <p class="intro">Write something the way you normally would. See how a native speaker would say it, and why each change sounds more natural.</p>
-    <div class="field">
-      <label class="label" for="say-text">What you want to say</label>
-      <textarea id="say-text">I am very tired today because yesterday I stayed at work until late. Maybe we can postpone our meeting for another day?</textarea>
-    </div>
-    <div class="field">
-      <span class="label" id="say-ctx-l">Where you'd say it</span>
-      <div class="chips" id="say-ctx" role="group" aria-labelledby="say-ctx-l">
-        <button aria-pressed="true" data-v="a text to a friend">Text to a friend</button>
-        <button aria-pressed="false" data-v="a casual chat with a coworker">Coworker chat</button>
-        <button aria-pressed="false" data-v="a work email">Work email</button>
-        <button aria-pressed="false" data-v="speaking out loud in a conversation">Out loud</button>
+  <!-- ===== DECODE ===== -->
+  <div class="stack" id="stack-decode">
+    <section class="view root">
+      <header class="navbar"><span class="l"><img class="mini-logo" src="icon.svg" alt=""></span><span class="ttl">Decode</span>
+        <span class="r"><button class="iconbtn js-settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.8 7.2c3-.2 6-.1 8.8 0M17.3 7.1h2.9M3.9 16.9h2.6M11.4 17c3-.1 5.9-.2 8.7 0"/><path d="M15 4.6c1.4 0 2.5 1.1 2.4 2.5 0 1.3-1.1 2.4-2.5 2.3-1.3 0-2.3-1.1-2.3-2.4.1-1.4 1.1-2.4 2.4-2.4z"/><path d="M9 14.6c1.4 0 2.5 1 2.4 2.4 0 1.4-1.1 2.4-2.5 2.4-1.3-.1-2.3-1.1-2.3-2.4.1-1.4 1.1-2.4 2.4-2.4z"/></svg></button></span></header>
+      <div class="scroller">
+        <h2 class="bigtitle">Decode</h2>
+        <p class="sub">Paste something you only half got. Get the slang and tone explained, then use it.</p>
+        <button class="notice js-keynote" hidden><span><b>Try the example first</b>Add your API key to decode your own text.</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+        <div class="composer">
+          <label class="label lab" for="dec-text">What you heard or read</label>
+          <textarea id="dec-text">Honestly that meeting was a total dumpster fire, but Mike really came through in the end. I'm gonna call it a day.</textarea>
+          <hr>
+          <label class="label lab" for="dec-where">Where it came from (optional)</label>
+          <input type="text" id="dec-where" placeholder="A coworker on Slack, a TV show">
+        </div>
+        <p class="err" id="dec-err" role="status"></p>
       </div>
-    </div>
-    <button class="btn wide" id="say-go">Make it sound native</button>
-    <p class="status" id="say-status" role="status"></p>
-    <div id="say-out"></div>
-  </section>
+      <div class="actionbar"><button class="btn" id="dec-go">Decode it</button></div>
+    </section>
+    <section class="view push" id="dec-result" aria-label="Decoded">
+      <header class="navbar"><span class="l"><button class="back js-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Decode</button></span><span class="ttl">Decoded</span><span class="r"></span></header>
+      <div class="scroller" id="dec-out"></div>
+    </section>
+  </div>
 
-  <!-- DECODE -->
-  <section class="screen" id="screen-decode" hidden>
-    <h2>Decode</h2>
-    <p class="intro">Paste something you only half got: a line from a show, a Slack message, something a coworker said. Get the slang and the tone explained, then use it yourself.</p>
-    <div class="field">
-      <label class="label" for="dec-text">What you heard or read</label>
-      <textarea id="dec-text">Honestly that meeting was a total dumpster fire, but Mike really came through in the end. I'm gonna call it a day.</textarea>
-    </div>
-    <div class="field">
-      <label class="label" for="dec-where">Where it came from (optional)</label>
-      <input type="text" id="dec-where" placeholder="A coworker on Slack, a TV show, a podcast">
-    </div>
-    <button class="btn wide" id="dec-go">Decode it</button>
-    <p class="status" id="dec-status" role="status"></p>
-    <div id="dec-out"></div>
-  </section>
-
-  <!-- MY PHRASES -->
-  <section class="screen" id="screen-deck" hidden>
-    <div class="deck-head">
-      <h2>My phrases</h2>
-      <span class="count" id="deck-count"></span>
-    </div>
-    <p class="intro">Practice works the other way round: you see the meaning and a situation, and you come up with the phrase.</p>
-    <div id="review"></div>
-    <ul class="list" id="deck-list"></ul>
-  </section>
-
-  <!-- SETTINGS -->
-  <section class="screen" id="screen-settings" hidden>
-    <h2>Settings</h2>
-    <div class="field">
-      <label class="label" for="api-key">Anthropic API key</label>
-      <input type="password" id="api-key" autocomplete="off" spellcheck="false" placeholder="sk-ant-...">
-      <p class="note">Your key is saved only on this phone, in this browser. Nativify sends it straight to Anthropic and nowhere else.</p>
-    </div>
-    <div class="row">
-      <button class="btn" id="key-save">Save key</button>
-      <button class="btn ghost" id="key-clear">Remove key</button>
-    </div>
-    <p class="status" id="key-status" role="status"></p>
-    <div class="banner">
-      <h3>How to get a key</h3>
-      <ol class="steps">
-        <li>Go to <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a> and sign in.</li>
-        <li>Add a small prepaid balance under Billing, and set a monthly spend limit.</li>
-        <li>Open API Keys, create a key, and paste it above.</li>
-      </ol>
-      <p class="note">Each rewrite or decode costs a few cents at most.</p>
-    </div>
-    <div class="field">
-      <span class="label">Add to your home screen</span>
-      <p class="note">On iPhone, tap Share, then "Add to Home Screen". On Android, open the browser menu and tap "Add to Home screen". Nativify then opens like an app.</p>
-    </div>
-    <div class="field">
-      <span class="label">Your phrases</span>
-      <p class="note" id="deck-size"></p>
-      <div class="row"><button class="btn ghost small" id="wipe">Delete all saved phrases</button></div>
-    </div>
-    <button class="btn ghost" id="close-settings">Done</button>
-  </section>
+  <!-- ===== MY PHRASES ===== -->
+  <div class="stack" id="stack-deck">
+    <section class="view root">
+      <header class="navbar"><span class="l"><img class="mini-logo" src="icon.svg" alt=""></span><span class="ttl">My phrases</span>
+        <span class="r"><button class="iconbtn js-settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.8 7.2c3-.2 6-.1 8.8 0M17.3 7.1h2.9M3.9 16.9h2.6M11.4 17c3-.1 5.9-.2 8.7 0"/><path d="M15 4.6c1.4 0 2.5 1.1 2.4 2.5 0 1.3-1.1 2.4-2.5 2.3-1.3 0-2.3-1.1-2.3-2.4.1-1.4 1.1-2.4 2.4-2.4z"/><path d="M9 14.6c1.4 0 2.5 1 2.4 2.4 0 1.4-1.1 2.4-2.5 2.4-1.3-.1-2.3-1.1-2.3-2.4.1-1.4 1.1-2.4 2.4-2.4z"/></svg></button></span></header>
+      <div class="scroller" id="deck-root"></div>
+    </section>
+    <section class="view push" id="phrase-detail" aria-label="Phrase">
+      <header class="navbar"><span class="l"><button class="back js-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>My phrases</button></span><span class="ttl">Phrase</span><span class="r"></span></header>
+      <div class="scroller" id="detail-out"></div>
+    </section>
+  </div>
 </div>
 
 <nav class="tabbar" aria-label="Sections">
@@ -248,13 +375,111 @@ nav.tabbar button[aria-selected="true"] svg{background:var(--hl);color:var(--hl-
   </div>
 </nav>
 
+<!-- ===== PRACTICE (full-screen modal) ===== -->
+<section class="modal" id="practice" aria-label="Practice" aria-modal="true" role="dialog">
+  <header class="navbar"><span class="l"><button class="iconbtn" id="pr-close" aria-label="Close practice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></span>
+    <span class="ttl" style="opacity:1">Practice</span><span class="r"></span></header>
+  <div style="display:flex;align-items:center;gap:8px;padding:4px var(--sr) 0 var(--sl)"><div class="progress"><i id="pr-bar" style="width:0%"></i></div></div>
+  <div class="pr-body" id="pr-body"></div>
+  <div class="actionbar" id="pr-actions" style="padding-bottom:calc(12px + var(--sb))"></div>
+</section>
+
+<!-- ===== SETTINGS (bottom sheet) ===== -->
+<div class="sheet-wrap" id="settings" role="dialog" aria-modal="true" aria-label="Settings">
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet" id="sheet">
+    <div class="sheet-head" id="sheet-head"><span class="grab"></span><span class="ttl">Settings</span><button class="done-btn" id="close-settings">Done</button></div>
+    <div class="sheet-body">
+      <span class="caps">Anthropic API key</span>
+      <div class="group"><div class="cell static">
+        <input type="password" id="api-key" autocomplete="off" spellcheck="false" placeholder="sk-ant-..." aria-label="Anthropic API key">
+        <div style="display:flex;gap:10px"><button class="btn small" id="key-save" style="flex:1">Save key</button><button class="btn ghost small" id="key-clear">Remove</button></div>
+        <p class="status" id="key-status" role="status"></p>
+        <p class="note">Your key stays on this phone, in this browser. Nativify sends it straight to Anthropic and nowhere else.</p>
+      </div></div>
+      <span class="caps">How to get a key</span>
+      <div class="group"><div class="cell static">
+        <ol class="steps">
+          <li>Go to <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a> and sign in.</li>
+          <li>Add a small prepaid balance under Billing, and set a monthly spend limit.</li>
+          <li>Open API Keys, create a key, and paste it above.</li>
+        </ol>
+        <p class="note">Each rewrite or decode costs a few cents at most.</p>
+      </div></div>
+      <span class="caps">App</span>
+      <div class="group">
+        <div class="cell static"><span class="t">Add to your home screen</span><p class="note">On iPhone, tap Share, then "Add to Home Screen". On Android, open the browser menu and tap "Add to Home screen". Nativify then opens full screen, like any other app.</p></div>
+        <button class="cell" id="replay-welcome"><span class="txt"><span class="t">Show the welcome screens</span></span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+      </div>
+      <span class="caps">Your phrases</span>
+      <div class="group"><div class="cell static">
+        <p class="note" id="deck-size"></p>
+        <button class="btn danger small" id="wipe">Delete all saved phrases</button>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== WELCOME (first visit) ===== -->
+<section class="welcome" id="welcome" hidden aria-label="Welcome to Nativify">
+  <div class="w-top"><span class="w-brand"><img src="icon.svg" alt="">Nativify</span><button class="skip" id="w-skip">Skip</button></div>
+  <div class="pages" id="pages">
+    <div class="page">
+      <div class="art">
+        <div class="hero-mark"><img src="icon.svg" alt=""></div>
+        <span class="bubble b1">gonna</span>
+        <span class="bubble b2">call it a day</span>
+        <span class="bubble b3">“I'm wiped”</span>
+      </div>
+      <div><h2>Sound like you <mark>grew up here.</mark></h2>
+        <p class="lede">Your English already works. Nativify helps you get past fluent to native: the slang, idioms and easy phrasing Americans actually use.</p></div>
+    </div>
+    <div class="page">
+      <div class="art"><div class="mini tilt">
+        <span class="label">You wrote</span><span class="was">Maybe we can postpone our meeting?</span>
+        <span class="label">A native would say</span><span class="now"><mark>Can we push</mark> our meeting?</span>
+      </div></div>
+      <div><h2>Say it like a local</h2>
+        <p class="lede">Write it your way. See the native version, with every change explained in plain words.</p></div>
+    </div>
+    <div class="page">
+      <div class="art"><div class="mini tilt" style="transform:rotate(2deg)">
+        <span class="reg">slang</span><span class="phrase">a dumpster fire</span>
+        <span class="why">A complete mess. Something that went very wrong.</span>
+        <span class="ex">“The launch was a dumpster fire.”</span>
+      </div></div>
+      <div><h2>Decode what you half got</h2>
+        <p class="lede">Paste a line from a show or a coworker's message. Get the meaning and the tone, then try it yourself.</p></div>
+    </div>
+    <div class="page">
+      <div class="art"><div class="stackart">
+        <div class="mini"></div>
+        <div class="mini"><span class="label" style="color:inherit;opacity:.7">stop working for now</span><span class="phrase">call it a day</span></div>
+      </div></div>
+      <div><h2>Make it yours</h2>
+        <p class="lede">Save the phrases you like. They come back for quick practice until they come out naturally.</p></div>
+    </div>
+  </div>
+  <div class="w-foot"><div class="dots" id="dots"><i class="on"></i><i></i><i></i><i></i></div><button class="btn" id="w-next">Next</button></div>
+</section>
+
+<div class="toast" id="toast" role="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span></span></div>
+
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const DAY = 864e5;
 const STEPS = [1, 3, 7, 16, 35, 80];     // days until the next review after each correct answer
 const MODEL = "claude-opus-5-5";
+const tick = () => { try{ navigator.vibrate && navigator.vibrate(8); }catch(e){} };
+const ICON = {
+  bookmark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6.5 4h11v16.5l-5.5-4-5.5 4z"/></svg>',
+  chev: '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  cards: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8.6 3.8c3.3-.3 6.6-.2 9.6.2 1.3.5 1.7 1.6 1.7 3 .2 3.3.1 6.5-.2 9.7"/><path d="M5.1 7c3.4-.4 6.8-.3 10 .1.8.4 1.1 1.2 1.1 2.1.2 3.6.1 7.3-.2 10.8-.4.8-1.2 1-2.1 1.1-2.9.2-5.8.2-8.6-.1-.9-.3-1.2-1-1.3-1.9-.2-3.6-.2-7.2.1-10.8.1-.7.4-1.1 1-1.3z"/></svg>'
+};
 
 /* ---------- safe local storage ---------- */
 const store = {
@@ -266,50 +491,132 @@ let apiKey = store.get("nv-key", "");
 let phrases = store.get("nv-phrases", []);
 const savePhrases = () => { store.set("nv-phrases", phrases); updateCounts(); };
 
-/* ---------- navigation ---------- */
-const screens = ["say","decode","deck","settings"];
-let current = "say";
-function show(name){
-  current = name;
-  screens.forEach(s => $("#screen-"+s).hidden = s !== name);
-  ["say","decode","deck"].forEach(t => $("#tab-"+t).setAttribute("aria-selected", t === name));
-  $("#key-banner").hidden = !!apiKey || name === "settings" || name === "deck";
-  if(name === "deck") renderDeck();
-  if(name === "settings"){ $("#api-key").value = apiKey; $("#key-status").textContent = ""; updateCounts(); }
-  if(name !== "settings") store.set("nv-tab", name);
-  window.scrollTo(0, 0);
+/* ---------- toast ---------- */
+let toastT;
+function toast(msg){
+  const t = $("#toast"); t.querySelector("span").textContent = msg;
+  t.classList.add("in"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("in"), 1800);
 }
-["say","decode","deck"].forEach(t => $("#tab-"+t).onclick = () => show(t));
-$("#open-settings").onclick = () => show("settings");
-$("#banner-settings").onclick = () => show("settings");
-$("#close-settings").onclick = () => show(store.get("nv-tab","say"));
 
-$("#say-ctx").addEventListener("click", e => {
-  const b = e.target.closest("button"); if(!b) return;
-  $("#say-ctx").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
+/* ---------- overlays share one back stack, so the phone's back gesture closes them ---------- */
+const overlays = [];
+function openOverlay(close){
+  overlays.push(close);
+  try{ history.pushState({ nv: overlays.length }, ""); }catch(e){}
+}
+function closeTop(){ if(overlays.length) history.back(); }
+window.addEventListener("popstate", () => { const c = overlays.pop(); if(c) c(); });
+
+/* ---------- tabs and pushed views ---------- */
+const TABS = ["say","decode","deck"];
+let current = "say";
+function showTab(name){
+  if(name === current){                     // tapping the active tab pops back to its root, like a native app
+    const st = $("#stack-" + name);
+    if(st.classList.contains("pushed")) closeTop();
+    else st.querySelector(".root .scroller").scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+  // leaving a tab with a pushed view: drop it quietly
+  const old = $("#stack-" + current);
+  if(old.classList.contains("pushed")) closeTop();
+  current = name;
+  TABS.forEach(t => {
+    $("#stack-" + t).classList.toggle("active", t === name);
+    $("#tab-" + t).setAttribute("aria-selected", t === name);
+  });
+  if(name === "deck") renderDeck();
+  store.set("nv-tab", name);
+}
+TABS.forEach(t => $("#tab-" + t).onclick = () => { tick(); showTab(t); });
+
+function push(view){
+  const stack = view.parentElement;
+  view.querySelector(".scroller").scrollTop = 0;
+  view.classList.add("in"); stack.classList.add("pushed");
+  openOverlay(() => { view.classList.remove("in"); stack.classList.remove("pushed"); });
+}
+$$(".js-back").forEach(b => b.onclick = closeTop);
+
+// large titles fold into the nav bar on scroll
+$$(".view").forEach(v => {
+  const sc = v.querySelector(".scroller"); if(!sc) return;
+  sc.addEventListener("scroll", () => v.classList.toggle("scrolled", sc.scrollTop > 30), { passive: true });
 });
-const sayCtx = () => $("#say-ctx [aria-pressed=true]").dataset.v;
 
-/* ---------- settings ---------- */
+// swipe from the left edge to go back
+(function edgeSwipe(){
+  let v = null, stack = null, x0 = 0, y0 = 0, dx = 0, w = 1, active = false;
+  document.addEventListener("touchstart", e => {
+    const t = e.touches[0];
+    if(t.clientX > 28) return;
+    const st = $("#stack-" + current);
+    if(!st.classList.contains("pushed")) return;
+    stack = st; v = st.querySelector(".view.push.in"); if(!v) return;
+    x0 = t.clientX; y0 = t.clientY; dx = 0; w = v.offsetWidth; active = false;
+  }, { passive: true });
+  document.addEventListener("touchmove", e => {
+    if(!v) return;
+    const t = e.touches[0]; dx = Math.max(0, t.clientX - x0);
+    if(!active){ if(Math.abs(t.clientY - y0) > 14 && dx < 14){ v = null; return; } if(dx < 8) return; active = true; v.classList.add("dragging"); stack.classList.add("dragging"); }
+    v.style.transform = `translateX(${dx}px)`;
+    stack.querySelector(".root").style.transform = `translateX(${-28 + 28 * dx / w}%)`;
+  }, { passive: true });
+  document.addEventListener("touchend", () => {
+    if(!v) return;
+    v.classList.remove("dragging"); stack.classList.remove("dragging");
+    v.style.transform = ""; stack.querySelector(".root").style.transform = "";
+    if(active && dx > w * 0.3) closeTop();
+    v = null;
+  });
+})();
+
+/* ---------- settings sheet ---------- */
+function openSettings(msg){
+  $("#api-key").value = apiKey;
+  const st = $("#key-status"); st.className = "status"; st.textContent = msg || "";
+  updateCounts();
+  $("#settings").classList.add("in");
+  openOverlay(() => $("#settings").classList.remove("in"));
+}
+$$(".js-settings").forEach(b => b.onclick = () => { tick(); openSettings(); });
+$$(".js-keynote").forEach(b => b.onclick = () => openSettings("Paste your key to use your own sentences."));
+$("#close-settings").onclick = closeTop;
+$("#scrim").onclick = closeTop;
+(function sheetDrag(){
+  const sh = $("#sheet"); let y0 = null, dy = 0;
+  $("#sheet-head").addEventListener("touchstart", e => { y0 = e.touches[0].clientY; dy = 0; sh.classList.add("dragging"); }, { passive: true });
+  $("#sheet-head").addEventListener("touchmove", e => { if(y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); sh.style.transform = `translateY(${dy}px)`; }, { passive: true });
+  $("#sheet-head").addEventListener("touchend", () => { sh.classList.remove("dragging"); sh.style.transform = ""; if(dy > 90) closeTop(); y0 = null; });
+})();
 $("#key-save").onclick = async () => {
   const k = $("#api-key").value.trim();
-  const st = $("#key-status");
-  if(!k){ st.className = "status err"; st.textContent = "Paste your key first."; return; }
-  apiKey = k; store.set("nv-key", k);
-  st.className = "status thinking"; st.textContent = "Checking your key";
+  const st = $("#key-status"), b = $("#key-save");
+  if(!k){ st.className = "status bad"; st.textContent = "Paste your key first."; return; }
+  apiKey = k; store.set("nv-key", k); updateKeyNotes();
+  st.className = "status"; st.textContent = "Checking your key..."; b.classList.add("busy"); b.disabled = true;
   try{
     await callClaude('Reply with only this JSON: {"ok": true}', "low", 50);
-    st.className = "status"; st.textContent = "Key saved and working.";
+    st.textContent = "Key saved and working."; tick();
   }catch(e){
-    st.className = "status err"; st.textContent = "Saved, but the test failed: " + e.message;
-  }
+    st.className = "status bad"; st.textContent = "Saved, but the test failed: " + e.message;
+  }finally{ b.classList.remove("busy"); b.disabled = false; }
 };
-$("#key-clear").onclick = () => { apiKey = ""; store.del("nv-key"); $("#api-key").value = ""; $("#key-status").className = "status"; $("#key-status").textContent = "Key removed from this phone."; };
+$("#key-clear").onclick = () => { apiKey = ""; store.del("nv-key"); $("#api-key").value = ""; updateKeyNotes(); $("#key-status").className = "status"; $("#key-status").textContent = "Key removed from this phone."; };
 $("#wipe").onclick = e => {
   const b = e.currentTarget;
   if(!b.dataset.confirm){ b.dataset.confirm = "1"; b.textContent = "Tap again to delete all"; return; }
-  phrases = []; savePhrases(); b.dataset.confirm = ""; b.textContent = "Delete all saved phrases";
+  phrases = []; savePhrases(); renderDeck(); b.dataset.confirm = ""; b.textContent = "Delete all saved phrases"; toast("All phrases deleted");
 };
+$("#replay-welcome").onclick = () => { closeTop(); setTimeout(showWelcome, 300); };
+function updateKeyNotes(){ $$(".js-keynote").forEach(n => n.hidden = !!apiKey); }
+
+$("#say-ctx").addEventListener("click", e => {
+  const b = e.target.closest("button"); if(!b) return;
+  tick();
+  $("#say-ctx").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
+});
+const sayCtx = () => $("#say-ctx [aria-pressed=true]").dataset.v;
 
 /* ---------- Claude ---------- */
 class AppError extends Error {}
@@ -358,40 +665,44 @@ function parseJSON(text){
   if(a >= 0 && b > a){ try{ return JSON.parse(t.slice(a, b+1)); }catch(e){} }
   throw new AppError("The answer came back in an unexpected shape. Try again.");
 }
-async function run(btn, statusEl, label, fn){
-  if(!apiKey){ show("settings"); $("#key-status").className = "status"; $("#key-status").textContent = "Add your API key to use your own sentences."; return null; }
-  btn.disabled = true;
-  statusEl.className = "status thinking"; statusEl.textContent = label;
-  try{ const r = await fn(); statusEl.className = "status"; statusEl.textContent = ""; return r; }
-  catch(e){ statusEl.className = "status err"; statusEl.textContent = e instanceof AppError ? e.message : "Something went wrong. Try again."; return null; }
-  finally{ btn.disabled = false; }
+// runs a Claude call with the button showing a spinner; errors land in errEl
+async function run(btn, errEl, label, fn){
+  const old = btn.textContent;
+  btn.disabled = true; btn.classList.add("busy"); btn.textContent = label;
+  errEl.className = errEl.className.replace(/\b(ok|close)\b/g, "").trim(); errEl.textContent = "";
+  try{ return await fn(); }
+  catch(e){ errEl.textContent = e instanceof AppError ? e.message : "Something went wrong. Try again."; return null; }
+  finally{ btn.disabled = false; btn.classList.remove("busy"); btn.textContent = old; }
 }
 
 const AUDIENCE = "The user is an advanced, long-time English speaker living in the US (C1/C2 level). Their English is correct and works for everyday and professional life; they want to sound like a native speaker: natural colloquial phrasing, idioms, phrasal verbs, contractions and the right register. Use American English. Be warm and plain-spoken.";
 
 /* ---------- phrases ---------- */
+const norm = s => String(s || "").trim().toLowerCase();
+const hasPhrase = s => phrases.some(x => norm(x.phrase) === norm(s));
 function addPhrase(p){
-  const key = (p.phrase || "").trim().toLowerCase();
-  if(!key) return "empty";
-  if(phrases.some(x => (x.phrase || "").trim().toLowerCase() === key)) return "exists";
+  if(!norm(p.phrase)) return "empty";
+  if(hasPhrase(p.phrase)) return "exists";
   phrases.push({ id: "p" + Date.now().toString(36) + Math.random().toString(36).slice(2,6),
     phrase: p.phrase.trim(), meaning: p.meaning || "", situation: p.situation || "", example: p.example || "",
     tone: p.tone || "", source: p.source, step: 0, due: Date.now(), created: Date.now() });
   savePhrases(); return "ok";
 }
-function saveButton(btn, p){
+// a bookmark toggle: tap to save, tap again to remove
+function saveToggle(btn, p){
+  const sync = () => btn.setAttribute("aria-pressed", hasPhrase(p.phrase));
+  sync();
   btn.onclick = () => {
-    const r = addPhrase(p);
-    const s = document.createElement("span"); s.className = "saved";
-    s.textContent = r === "exists" ? "Already in My phrases" : "Saved to My phrases";
-    btn.replaceWith(s);
+    tick();
+    if(hasPhrase(p.phrase)){ phrases = phrases.filter(x => norm(x.phrase) !== norm(p.phrase)); savePhrases(); toast("Removed from My phrases"); }
+    else { addPhrase(p); toast("Saved to My phrases"); }
+    sync();
   };
 }
 const dueList = () => { const now = Date.now(); return phrases.filter(p => (p.due || 0) <= now); };
 function updateCounts(){
   const n = phrases.length, d = dueList().length;
   const badge = $("#due-badge"); badge.hidden = !d; badge.textContent = d;
-  $("#deck-count").textContent = n ? `${d} to practice · ${n} saved` : "";
   $("#deck-size").textContent = n ? `${n} phrase${n>1?"s":""} saved on this phone.` : "No phrases saved yet.";
 }
 
@@ -410,26 +721,46 @@ function highlight(text, bits){
 function renderSay(r, isExample){
   const swaps = Array.isArray(r.swaps) ? r.swaps : [];
   const out = $("#say-out");
-  out.innerHTML = `<div class="result">
-    ${isExample ? '<span class="flag">Example</span>' : ""}
-    <div class="field"><span class="label">How a native would say it</span>
-      <p class="native">${highlight(String(r.native || ""), swaps.map(s => s.better))}</p></div>
-    ${r.note ? `<p class="why">${esc(r.note)}</p>` : ""}
-    ${swaps.length ? `<div class="field"><span class="label">What changed</span>
-    <ul class="items">${swaps.map((s,i) => `<li>
-      <div class="swap-line"><span class="was">${esc(s.original)}</span><span class="arrow" aria-hidden="true">→</span><span class="now">${esc(s.better)}</span>${s.register ? `<span class="reg">${esc(s.register)}</span>` : ""}</div>
+  out.innerHTML = `
+    <div class="card hero">
+      ${isExample ? '<span class="flag">Example</span>' : ""}
+      <span class="label">How a native would say it</span>
+      <p class="native">${highlight(String(r.native || ""), swaps.map(s => s.better))}</p>
+      ${r.note ? `<p class="why">${esc(r.note)}</p>` : ""}
+    </div>
+    ${swaps.length ? `<span class="caps">What changed · ${swaps.length}</span>
+    ${swaps.map((s,i) => `<div class="card">
+      <div class="card-top"><div class="swap-line"><span class="was">${esc(s.original)}</span><span class="now">${esc(s.better)}</span></div>
+        <button class="save" data-i="${i}" aria-label="Save phrase">${ICON.bookmark}</button></div>
+      ${s.register ? `<span class="reg">${esc(s.register)}</span>` : ""}
       <p class="why">${esc(s.why)}</p>
-      <div class="row"><button class="btn ghost small" data-i="${i}">Save phrase</button></div>
-    </li>`).join("")}</ul></div>` : `<p class="why">That already sounds natural.</p>`}
-  </div>`;
+    </div>`).join("")}` : `<p class="why">That already sounds natural.</p>`}
+    ${isExample && !apiKey ? `<button class="btn ghost wide js-addkey">Add your key to rewrite your own</button>` : ""}`;
   out.querySelectorAll("[data-i]").forEach(b => {
     const s = swaps[+b.dataset.i];
-    saveButton(b, { phrase: s.better, meaning: s.meaning || s.why, situation: s.situation || ("Instead of “" + s.original + "”"), example: s.example || r.native, tone: s.register, source: "say" });
+    saveToggle(b, { phrase: s.better, meaning: s.meaning || s.why, situation: s.situation || ("Instead of “" + s.original + "”"), example: s.example || r.native, tone: s.register, source: "say" });
   });
+  out.querySelectorAll(".js-addkey").forEach(b => b.onclick = () => openSettings("Paste your key to use your own sentences."));
 }
+const SAY_SAMPLE = $("#say-text").value.trim();
+const SAY_EXAMPLE = {
+  native: "I'm wiped today. I ended up staying late at work last night. Any chance we could push our meeting?",
+  note: "Shorter and more relaxed, the way you'd text someone you know.",
+  swaps: [
+    { original: "I am very tired", better: "I'm wiped", why: "Natives use contractions and a vivid word for being exhausted.", meaning: "very tired, out of energy", situation: "telling a friend you have nothing left today", example: "Can we skip the gym? I'm wiped.", register: "casual" },
+    { original: "stayed at work until late", better: "staying late", why: "“Stay late” already means staying at work after hours, so “at work until” isn't needed.", meaning: "work past normal hours", situation: "explaining why you got home at 9pm", example: "I'm staying late tonight to finish the report.", register: "neutral" },
+    { original: "Maybe we can postpone our meeting for another day?", better: "push our meeting", why: "“Push” is the everyday word for moving something later. “Postpone” sounds formal in a text.", meaning: "move to a later time", situation: "asking to move a plan to later", example: "Can we push lunch to Thursday?", register: "casual" }
+  ]
+};
 $("#say-go").onclick = async () => {
-  const text = $("#say-text").value.trim();
-  if(!text){ $("#say-status").className = "status err"; $("#say-status").textContent = "Write a sentence or two first."; return; }
+  tick();
+  const text = $("#say-text").value.trim(), err = $("#say-err");
+  if(!text){ err.textContent = "Write a sentence or two first."; return; }
+  if(!apiKey){
+    if(text === SAY_SAMPLE){ renderSay(SAY_EXAMPLE, true); push($("#say-result")); }
+    else openSettings("Add your API key to rewrite your own sentences.");
+    return;
+  }
   const prompt = `${AUDIENCE}
 
 Rewrite the user's text the way a native speaker would naturally say it in ${sayCtx()}. Keep their meaning and roughly the same length. Change only what makes it sound non-native, stiff or textbook-like; if a part is already natural, keep it.
@@ -442,42 +773,54 @@ Give 0 to 6 swaps, most useful first.
 
 User's text:
 """${text.slice(0, 4000)}"""`;
-  const r = await run($("#say-go"), $("#say-status"), "Rewriting", () => callClaude(prompt, "low"));
-  if(r) renderSay(r, false);
+  const r = await run($("#say-go"), err, "Rewriting", () => callClaude(prompt, "low"));
+  if(r){ renderSay(r, false); push($("#say-result")); }
 };
 
 /* ---------- Decode ---------- */
 function renderDecode(r, isExample){
   const ps = Array.isArray(r.phrases) ? r.phrases : [];
   const out = $("#dec-out");
-  out.innerHTML = `<div class="result">
-    ${isExample ? '<span class="flag">Example</span>' : ""}
-    <div class="field"><span class="label">In plain words</span><p>${esc(r.plain)}</p></div>
-    ${r.tone ? `<div class="field"><span class="label">Tone</span><p class="why">${esc(r.tone)}</p></div>` : ""}
-    ${ps.length ? `<div class="field"><span class="label">Phrases to own</span>
-    <ul class="items">${ps.map((p,i) => `<li>
-      <div class="swap-line"><span class="phrase">${esc(p.phrase)}</span>${p.register ? `<span class="reg">${esc(p.register)}</span>` : ""}</div>
+  out.innerHTML = `
+    <div class="card hero">
+      ${isExample ? '<span class="flag">Example</span>' : ""}
+      <span class="label">In plain words</span>
+      <p class="native" style="font-size:20px">${esc(r.plain)}</p>
+      ${r.tone ? `<p class="why"><b>Tone:</b> ${esc(r.tone)}</p>` : ""}
+    </div>
+    ${ps.length ? `<span class="caps">Phrases to own · ${ps.length}</span>
+    ${ps.map((p,i) => `<div class="card">
+      <div class="card-top"><div><span class="phrase">${esc(p.phrase)}</span></div>
+        <button class="save" data-save="${i}" aria-label="Save phrase">${ICON.bookmark}</button></div>
+      ${p.register ? `<span class="reg">${esc(p.register)}</span>` : ""}
       <p>${esc(p.meaning)}</p>
       ${p.example ? `<p class="ex">“${esc(p.example)}”</p>` : ""}
-      <div class="useit">
+      <button class="btn ghost small" data-try="${i}">Use it yourself</button>
+      <div class="useit" id="use-box-${i}" hidden>
         <label class="label" for="use-${i}">Your turn: ${esc(p.challenge || "use it in a sentence about your own life")}</label>
         <textarea id="use-${i}" placeholder="Write your sentence"></textarea>
-        <div class="row"><button class="btn small" data-check="${i}">Check my sentence</button><button class="btn ghost small" data-save="${i}">Save phrase</button></div>
+        <button class="btn small" data-check="${i}">Check my sentence</button>
         <p class="fb" id="fb-${i}" role="status"></p>
       </div>
-    </li>`).join("")}</ul></div>` : ""}
-  </div>`;
+    </div>`).join("")}` : ""}
+    ${isExample && !apiKey ? `<button class="btn ghost wide js-addkey">Add your key to decode your own</button>` : ""}`;
   out.querySelectorAll("[data-save]").forEach(b => {
     const p = ps[+b.dataset.save];
-    saveButton(b, { phrase: p.phrase, meaning: p.meaning, situation: p.situation, example: p.example, tone: p.register, source: "decode" });
+    saveToggle(b, { phrase: p.phrase, meaning: p.meaning, situation: p.situation, example: p.example, tone: p.register, source: "decode" });
+  });
+  out.querySelectorAll("[data-try]").forEach(b => b.onclick = () => {
+    const box = $("#use-box-" + b.dataset.try);
+    b.hidden = true; box.hidden = false; box.querySelector("textarea").focus();
   });
   out.querySelectorAll("[data-check]").forEach(b => b.onclick = () => {
     const i = +b.dataset.check;
     checkUse(ps[i], $("#use-" + i).value.trim(), $("#fb-" + i), b);
   });
+  out.querySelectorAll(".js-addkey").forEach(b => b.onclick = () => openSettings("Paste your key to decode your own text."));
 }
 async function checkUse(p, sentence, fb, btn){
   if(!sentence){ fb.className = "fb"; fb.textContent = "Write a sentence first."; return; }
+  if(!apiKey){ openSettings("Add your API key to get feedback on your sentences."); return; }
   const prompt = `${AUDIENCE}
 
 The user is practicing the expression "${p.phrase}" (${p.meaning}). Judge their sentence like a friendly native-speaker coach: is the expression used correctly and naturally?
@@ -485,14 +828,31 @@ The user is practicing the expression "${p.phrase}" (${p.meaning}). Judge their 
 Reply with only JSON, no other text: {"verdict": "natural" | "close" | "off", "feedback": "one or two plain, encouraging sentences", "better": "a more natural version of their sentence, or empty if it's already natural"}
 
 Their sentence: """${sentence.slice(0, 1000)}"""`;
+  fb.className = "fb";
   const r = await run(btn, fb, "Checking", () => callClaude(prompt, "low", 1500));
-  if(!r) { fb.classList.remove("status"); fb.classList.add("fb"); return; }
+  if(!r) return;
   fb.className = "fb " + (r.verdict === "natural" ? "ok" : "close");
   fb.textContent = (r.verdict === "natural" ? "Sounds natural. " : r.verdict === "close" ? "Almost. " : "Not quite. ") + (r.feedback || "") + (r.better ? " Try: “" + r.better + "”" : "");
 }
+const DEC_SAMPLE = $("#dec-text").value.trim();
+const DEC_EXAMPLE = {
+  plain: "The meeting went really badly, but Mike fixed things or helped a lot at the end. The speaker is done working for today.",
+  tone: "Frustrated but light-hearted, the way coworkers vent to each other.",
+  phrases: [
+    { phrase: "a dumpster fire", meaning: "a complete mess, something that went very wrong", register: "slang", example: "The product launch was a dumpster fire from start to finish.", situation: "describing a chaotic disaster", challenge: "describe something at work or home that went badly" },
+    { phrase: "come through", meaning: "do what was needed, especially when people were counting on you", register: "casual", example: "I needed a ride at 5am and my sister came through.", situation: "thanking someone who helped when it mattered", challenge: "talk about someone who helped you out recently" },
+    { phrase: "call it a day", meaning: "stop working for now", register: "casual", example: "It's almost seven, let's call it a day.", situation: "stopping work in the evening", challenge: "say you're stopping work for today" }
+  ]
+};
 $("#dec-go").onclick = async () => {
-  const text = $("#dec-text").value.trim();
-  if(!text){ $("#dec-status").className = "status err"; $("#dec-status").textContent = "Paste what you heard or read first."; return; }
+  tick();
+  const text = $("#dec-text").value.trim(), err = $("#dec-err");
+  if(!text){ err.textContent = "Paste what you heard or read first."; return; }
+  if(!apiKey){
+    if(text === DEC_SAMPLE){ renderDecode(DEC_EXAMPLE, true); push($("#dec-result")); }
+    else openSettings("Add your API key to decode your own text.");
+    return;
+  }
   const where = $("#dec-where").value.trim();
   const prompt = `${AUDIENCE}
 
@@ -506,99 +866,155 @@ Give 1 to 5 phrases.
 
 Text:
 """${text.slice(0, 4000)}"""`;
-  const r = await run($("#dec-go"), $("#dec-status"), "Decoding", () => callClaude(prompt, "low"));
-  if(r) renderDecode(r, false);
+  const r = await run($("#dec-go"), err, "Decoding", () => callClaude(prompt, "low"));
+  if(r){ renderDecode(r, false); push($("#dec-result")); }
 };
 
-/* ---------- My phrases: list and practice ---------- */
-let reviewing = null;   // {queue, i, shown, typed}
+/* ---------- My phrases ---------- */
 function fmtDue(t){
   const d = Math.ceil(((t || 0) - Date.now()) / DAY);
-  return d <= 0 ? "now" : d === 1 ? "tomorrow" : "in " + d + " days";
+  return d <= 0 ? "Due" : d === 1 ? "Tomorrow" : "In " + d + " days";
 }
 function renderDeck(){
   updateCounts();
-  const rev = $("#review"), list = $("#deck-list");
+  const root = $("#deck-root");
+  const head = `<h2 class="bigtitle">My phrases</h2>`;
   if(!phrases.length){
-    rev.innerHTML = `<div class="empty">No phrases yet. Tap <b>Save phrase</b> on anything in Say it or Decode, and it shows up here to practice. You can save the examples to try it out.</div>`;
-    list.innerHTML = ""; return;
+    root.innerHTML = head + `<div class="empty"><span class="em">${ICON.cards}</span><h3>Nothing saved yet</h3>
+      <p>Tap the bookmark on any phrase in Say it or Decode. It lands here, ready to practice.</p>
+      <button class="btn ghost small" id="go-say">Try Say it</button></div>`;
+    $("#go-say").onclick = () => showTab("say");
+    return;
   }
-  if(reviewing) renderCard();
-  else {
-    const d = dueList().length;
-    rev.innerHTML = d
-      ? `<button class="btn wide" id="start-rev">Practice ${d} phrase${d > 1 ? "s" : ""}</button>`
-      : `<div class="empty">You're all caught up. Saved phrases come back on a schedule, and sooner if you miss them.</div>`;
-    const s = $("#start-rev"); if(s) s.onclick = startReview;
-  }
+  const d = dueList().length;
   const sorted = [...phrases].sort((a,b) => (a.due || 0) - (b.due || 0));
-  list.innerHTML = sorted.map(p => `<li><div><h3>${esc(p.phrase)}</h3><p class="m">${esc(p.meaning)}</p><button class="link" data-del="${esc(p.id)}">Remove</button></div><span class="due">${fmtDue(p.due)}</span></li>`).join("");
-  list.querySelectorAll("[data-del]").forEach(b => b.onclick = () => {
-    if(!b.dataset.confirm){ b.dataset.confirm = "1"; b.textContent = "Tap again to remove"; return; }
-    phrases = phrases.filter(x => x.id !== b.dataset.del); savePhrases(); renderDeck();
-  });
+  root.innerHTML = head + (d
+    ? `<div class="due-card"><span class="deco">${ICON.cards}</span><span class="n">${d}</span><p>phrase${d > 1 ? "s" : ""} ready to practice. You see the meaning, you come up with the phrase.</p>
+       <button class="btn yellow" id="start-rev">Start practice</button></div>`
+    : `<div class="due-card"><span class="deco">${ICON.cards}</span><span class="n" style="font-size:34px">All caught up</span><p>Saved phrases come back on a schedule, and sooner if you miss them.</p></div>`)
+    + `<span class="caps">Saved · ${phrases.length}</span>
+    <div class="group">${sorted.map(p => `<button class="cell" data-id="${esc(p.id)}"><span class="txt"><span class="t">${esc(p.phrase)}</span><span class="m">${esc(p.meaning)}</span></span>
+      <span class="pill ${(p.due || 0) <= Date.now() ? "due" : ""}">${fmtDue(p.due)}</span>${ICON.chev}</button>`).join("")}</div>`;
+  const s = $("#start-rev"); if(s) s.onclick = () => { tick(); startReview(); };
+  root.querySelectorAll("[data-id]").forEach(b => b.onclick = () => showDetail(b.dataset.id));
 }
+function showDetail(id){
+  const p = phrases.find(x => x.id === id); if(!p) return;
+  $("#detail-out").innerHTML = `<div class="detail">
+    ${p.tone ? `<span class="reg">${esc(p.tone)}</span>` : ""}
+    <h2 class="big">${esc(p.phrase)}</h2>
+    <div class="card">
+      <div class="kv"><span class="label">Meaning</span><p>${esc(p.meaning)}</p></div>
+      ${p.situation ? `<div class="kv"><span class="label">When to use it</span><p>${esc(p.situation)}</p></div>` : ""}
+      ${p.example ? `<div class="kv"><span class="label">Example</span><p class="ex">“${esc(p.example)}”</p></div>` : ""}
+    </div>
+    <div class="group"><div class="cell"><span class="txt"><span class="t">Next practice</span></span><span class="pill ${(p.due || 0) <= Date.now() ? "due" : ""}">${fmtDue(p.due)}</span></div></div>
+    <button class="btn danger wide" id="del-phrase">Remove from My phrases</button>
+  </div>`;
+  $("#del-phrase").onclick = e => {
+    const b = e.currentTarget;
+    if(!b.dataset.confirm){ b.dataset.confirm = "1"; b.textContent = "Tap again to remove"; return; }
+    phrases = phrases.filter(x => x.id !== id); savePhrases(); renderDeck(); closeTop(); toast("Phrase removed");
+  };
+  push($("#phrase-detail"));
+}
+
+/* ---------- practice ---------- */
+let reviewing = null;   // {queue, i, shown, typed, right}
 function startReview(){
   const q = dueList();
   for(let i = q.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [q[i], q[j]] = [q[j], q[i]]; }
-  reviewing = { queue: q, i: 0, shown: false, typed: "" };
+  reviewing = { queue: q, i: 0, shown: false, typed: "", right: 0 };
   renderCard();
+  const m = $("#practice"); m.classList.add("in");
+  openOverlay(() => { m.classList.remove("in"); reviewing = null; renderDeck(); });
 }
+$("#pr-close").onclick = closeTop;
 function renderCard(){
-  const rev = $("#review"), r = reviewing, p = r.queue[r.i];
-  if(!p){ reviewing = null; rev.innerHTML = `<div class="empty">Done for now. Nice work.</div>`; return; }
-  rev.innerHTML = `<div class="card">
-    <span class="label">${r.i + 1} of ${r.queue.length}</span>
-    <p class="prompt">${esc(p.meaning)}</p>
-    ${p.situation ? `<p class="why">When: ${esc(p.situation)}</p>` : ""}
-    <div class="field"><label class="label" for="rev-in">Say it the native way</label>
-      <input type="text" id="rev-in" autocomplete="off" autocapitalize="off" placeholder="Type the phrase"></div>
-    ${r.shown ? `<div class="answer"><span class="label">The phrase</span><p class="phrase">${esc(p.phrase)}</p>${p.example ? `<p class="ex">“${esc(p.example)}”</p>` : ""}
-      <div class="row"><button class="btn small" id="r-good">I had it</button><button class="btn ghost small" id="r-again">Missed it</button></div></div>`
-      : `<button class="btn" id="r-show">Show the phrase</button>`}
-  </div>`;
+  const r = reviewing, body = $("#pr-body"), acts = $("#pr-actions");
+  const total = r.queue.length, p = r.queue[r.i];
+  $("#pr-bar").style.width = (100 * r.i / total) + "%";
+  if(!p){
+    body.innerHTML = `<div class="done"><span class="em">${ICON.check}</span><p class="big">Nice work.</p>
+      <p class="why">You knew ${r.right} of ${total}. Missed ones come back in a few minutes; the rest wait a few days.</p></div>`;
+    acts.innerHTML = `<button class="btn" id="pr-finish">Done</button>`;
+    $("#pr-finish").onclick = closeTop;
+    return;
+  }
+  body.innerHTML = `<p class="count-l">${r.i + 1} of ${total}</p>
+    <div class="flash"><div class="flash-in">
+      <div class="face front">
+        <span class="label">What's the native way to say...</span>
+        <p class="prompt">${esc(p.meaning)}</p>
+        ${p.situation ? `<p class="why">When: ${esc(p.situation)}</p>` : ""}
+      </div>
+      <div class="face back" aria-hidden="true">
+        <span class="label">The phrase</span>
+        <p class="phrase">${esc(p.phrase)}</p>
+        ${p.example ? `<p class="ex">“${esc(p.example)}”</p>` : ""}
+        <p class="why" id="your-try" style="color:inherit;opacity:.75"></p>
+      </div>
+    </div></div>
+    <input type="text" id="rev-in" autocomplete="off" autocapitalize="off" placeholder="Type your guess (optional)" aria-label="Your guess">`;
+  acts.innerHTML = `<button class="btn" id="r-show">Show the phrase</button>`;
   const inp = $("#rev-in"); inp.value = r.typed || "";
   inp.oninput = () => r.typed = inp.value;
-  if(!r.shown){
-    const reveal = () => { r.shown = true; renderCard(); };
-    $("#r-show").onclick = reveal;
-    inp.onkeydown = e => { if(e.key === "Enter") reveal(); };
-  } else {
+  const reveal = () => {
+    tick(); inp.blur();
+    $(".flash").classList.add("flipped");
+    $(".face.back").setAttribute("aria-hidden", "false"); $(".face.front").setAttribute("aria-hidden", "true");
+    $("#your-try").textContent = r.typed.trim() ? "You wrote: " + r.typed.trim() : "";
+    inp.hidden = true;
+    acts.innerHTML = `<button class="btn ghost" id="r-again">Missed it</button><button class="btn" id="r-good">I had it</button>`;
     $("#r-good").onclick = () => grade(true);
     $("#r-again").onclick = () => grade(false);
-  }
+  };
+  $("#r-show").onclick = reveal;
+  inp.onkeydown = e => { if(e.key === "Enter") reveal(); };
 }
 function grade(ok){
+  tick();
   const p = reviewing.queue[reviewing.i];
   const live = phrases.find(x => x.id === p.id) || p;
-  if(ok){ live.step = Math.min((live.step || 0) + 1, STEPS.length); live.due = Date.now() + STEPS[live.step - 1] * DAY; }
+  if(ok){ live.step = Math.min((live.step || 0) + 1, STEPS.length); live.due = Date.now() + STEPS[live.step - 1] * DAY; reviewing.right++; }
   else { live.step = 0; live.due = Date.now() + 10 * 60 * 1000; }   // missed: back in 10 minutes
-  reviewing.i++; reviewing.shown = false; reviewing.typed = "";
-  savePhrases(); renderDeck();
+  reviewing.i++; reviewing.typed = "";
+  savePhrases(); renderCard();
 }
 
-/* ---------- start in a working state ---------- */
-renderSay({
-  native: "I'm wiped today. I ended up staying late at work last night. Any chance we could push our meeting?",
-  note: "Shorter and more relaxed, the way you'd text someone you know.",
-  swaps: [
-    { original: "I am very tired", better: "I'm wiped", why: "Natives use contractions and a vivid word for being exhausted.", meaning: "very tired, out of energy", situation: "telling a friend you have nothing left today", example: "Can we skip the gym? I'm wiped.", register: "casual" },
-    { original: "stayed at work until late", better: "staying late", why: "“Stay late” already means staying at work after hours, so “at work until” isn't needed.", meaning: "work past normal hours", situation: "explaining why you got home at 9pm", example: "I'm staying late tonight to finish the report.", register: "neutral" },
-    { original: "Maybe we can postpone our meeting for another day?", better: "push our meeting", why: "“Push” is the everyday word for moving something later. “Postpone” sounds formal in a text.", meaning: "move to a later time", situation: "asking to move a plan to later", example: "Can we push lunch to Thursday?", register: "casual" }
-  ]
-}, true);
-renderDecode({
-  plain: "The meeting went really badly, but Mike fixed things or helped a lot at the end. The speaker is done working for today.",
-  tone: "Frustrated but light-hearted, the way coworkers vent to each other.",
-  phrases: [
-    { phrase: "a dumpster fire", meaning: "a complete mess, something that went very wrong", register: "slang", example: "The product launch was a dumpster fire from start to finish.", situation: "describing a chaotic disaster", challenge: "describe something at work or home that went badly" },
-    { phrase: "come through", meaning: "do what was needed, especially when people were counting on you", register: "casual", example: "I needed a ride at 5am and my sister came through.", situation: "thanking someone who helped when it mattered", challenge: "talk about someone who helped you out recently" },
-    { phrase: "call it a day", meaning: "stop working for now", register: "casual", example: "It's almost seven, let's call it a day.", situation: "stopping work in the evening", challenge: "say you're stopping work for today" }
-  ]
-}, true);
+/* ---------- welcome ---------- */
+const pages = $("#pages"), dots = $$("#dots i");
+let page = 0;
+function setPage(i){
+  page = i; dots.forEach((d, j) => d.classList.toggle("on", j === i));
+  $("#w-next").textContent = i === dots.length - 1 ? "Get started" : "Next";
+}
+pages.addEventListener("scroll", () => {
+  const i = Math.round(pages.scrollLeft / pages.clientWidth);
+  if(i !== page) setPage(i);
+}, { passive: true });
+function showWelcome(){
+  const w = $("#welcome"); w.hidden = false; w.classList.remove("gone");
+  pages.scrollLeft = 0; setPage(0);
+}
+function finishWelcome(){
+  tick(); store.set("nv-welcomed", true);
+  const w = $("#welcome"); w.classList.add("gone");
+  setTimeout(() => w.hidden = true, 550);
+}
+$("#w-next").onclick = () => {
+  if(page >= dots.length - 1) return finishWelcome();
+  tick(); pages.scrollTo({ left: (page + 1) * pages.clientWidth, behavior: "smooth" });
+};
+$("#w-skip").onclick = finishWelcome;
+
+/* ---------- start ---------- */
+updateKeyNotes();
 updateCounts();
+renderDeck();
 const startTab = store.get("nv-tab", "say");
-show(["say","decode","deck"].includes(startTab) ? startTab : "say");
+if(TABS.includes(startTab) && startTab !== "say") showTab(startTab);
+if(!store.get("nv-welcomed", false)) showWelcome();
 </script>
 </body>
 </html>
